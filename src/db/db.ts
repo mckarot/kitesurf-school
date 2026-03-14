@@ -14,12 +14,15 @@ import type {
   UserTransaction,
   CourseCredit,
   DeletionRequest,
-  UserConsent
+  UserConsent,
+  SchoolSchedule,
+  InstructorAvailability
 } from '../types';
 import { configureV5Migration } from './migrations/v5';
 import { configureV6Migration } from './migrations/v6';
 import { configureV7Migration } from './migrations/v7';
 import { configureV8Migration } from './migrations/v8';
+import { configureV9Migration } from './migrations/v9';
 
 export class KiteSurfDB extends Dexie {
   users!: Table<User, number>;
@@ -34,6 +37,8 @@ export class KiteSurfDB extends Dexie {
   courseCredits!: Table<CourseCredit, number>;
   deletionRequests!: Table<DeletionRequest, number>;
   userConsents!: Table<UserConsent, number>;
+  schoolSchedule!: Table<SchoolSchedule, number>;
+  instructorAvailability!: Table<InstructorAvailability, number>;
 
   constructor() {
     super('KiteSurfSchoolDB');
@@ -121,6 +126,16 @@ export class KiteSurfDB extends Dexie {
     // - Rename usedHours → usedSessions
     // - Convert existing data: sessions = hours / 2.5 (rounded down)
     configureV8Migration(this);
+
+    // Version 9: Add schoolSchedule and instructorAvailability tables
+    // New schedule management system:
+    // - schoolSchedule: Admin-managed base schedule (Monday to Saturday)
+    // - instructorAvailability: Instructor-managed unavailability for specific dates
+    // Index justification:
+    // - schoolSchedule: ++id (primary key), dayOfWeek (filter by day), isActive (filter active slots)
+    // - instructorAvailability: ++id (primary key), [instructorId+date+scheduleId] (composite for unique constraint),
+    //   instructorId (filter by instructor), date (filter by date), isAvailable (filter availability)
+    configureV9Migration(this);
   }
 }
 

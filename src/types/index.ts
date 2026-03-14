@@ -57,6 +57,39 @@ export interface TimeSlot {
 }
 
 // ============================================
+// SCHOOL SCHEDULE (Admin-managed)
+// ============================================
+
+/**
+ * SchoolSchedule - Emploi du temps de base de l'école
+ * Géré par l'admin, s'applique du Lundi au Samedi toute l'année
+ * dayOfWeek: 1=Lundi, 2=Mardi, ..., 6=Samedi
+ */
+export interface SchoolSchedule {
+  id: number;
+  dayOfWeek: 1 | 2 | 3 | 4 | 5 | 6;
+  startTime: string; // "08:30"
+  endTime: string; // "11:00"
+  isActive: 0 | 1;
+  createdAt: number;
+}
+
+/**
+ * InstructorAvailability - Indisponibilités des moniteurs
+ * Géré par les moniteurs pour bloquer des créneaux spécifiques
+ * (maladie, congés, etc.)
+ */
+export interface InstructorAvailability {
+  id: number;
+  instructorId: number;
+  date: string; // "YYYY-MM-DD"
+  scheduleId: number; // Reference to SchoolSchedule
+  isAvailable: 0 | 1; // 0 = bloqué, 1 = disponible
+  reason?: string; // "Maladie", "Congés", "Autre"
+  createdAt: number;
+}
+
+// ============================================
 // RESERVATIONS
 // ============================================
 
@@ -442,6 +475,14 @@ export type CreateCourseSessionInput = Omit<CourseSession, 'id' | 'isActive' | '
 export type CreateTimeSlotInput = Omit<TimeSlot, 'id' | 'isAvailable' | 'createdAt'>;
 
 export type CreateUserInput = Omit<User, 'id' | 'isActive' | 'createdAt'>;
+
+// ============================================
+// SCHOOL SCHEDULE INPUT TYPES
+// ============================================
+
+export type CreateSchoolScheduleInput = Omit<SchoolSchedule, 'id' | 'createdAt'>;
+
+export type CreateInstructorAvailabilityInput = Omit<InstructorAvailability, 'id' | 'createdAt'>;
 
 // ============================================
 // RESERVATION WITH CREDIT

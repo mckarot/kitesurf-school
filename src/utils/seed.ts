@@ -1,7 +1,7 @@
 // src/utils/seed.ts
 
 import { db } from '../db/db';
-import type { User, Course, Reservation, CourseSession, TimeSlot, UserConsent, CourseCredit } from '../types';
+import type { User, Course, Reservation, CourseSession, TimeSlot, UserConsent, CourseCredit, SchoolSchedule } from '../types';
 
 export async function seedDatabase(): Promise<void> {
   const userCount = await db.users.count();
@@ -99,7 +99,7 @@ export async function seedDatabase(): Promise<void> {
     // Matin 1: 08:30 - 11:00
     // Matin 2: 11:30 - 14:00
     // Après-midi: 14:30 - 17:00
-    
+
     // Cours 1 - Introduction au Kitesurf
     {
       id: 1,
@@ -156,7 +156,7 @@ export async function seedDatabase(): Promise<void> {
       isActive: 1,
       createdAt: Date.now(),
     },
-    
+
     // Cours 2 - Perfectionnement Kitesurf
     {
       id: 6,
@@ -191,7 +191,7 @@ export async function seedDatabase(): Promise<void> {
       isActive: 1,
       createdAt: Date.now(),
     },
-    
+
     // Cours 3 - Kitesurf Avancé
     {
       id: 9,
@@ -342,6 +342,37 @@ export async function seedDatabase(): Promise<void> {
   ];
 
   // ============================================
+  // SchoolSchedule - Emploi du temps de l'école
+  // 18 créneaux par défaut (3 créneaux × 6 jours)
+  // ============================================
+  const schoolSchedules: SchoolSchedule[] = [
+    // Lundi (dayOfWeek = 1)
+    { id: 1, dayOfWeek: 1, startTime: '08:30', endTime: '11:00', isActive: 1, createdAt: Date.now() },
+    { id: 2, dayOfWeek: 1, startTime: '11:30', endTime: '14:00', isActive: 1, createdAt: Date.now() },
+    { id: 3, dayOfWeek: 1, startTime: '14:30', endTime: '17:00', isActive: 1, createdAt: Date.now() },
+    // Mardi (dayOfWeek = 2)
+    { id: 4, dayOfWeek: 2, startTime: '08:30', endTime: '11:00', isActive: 1, createdAt: Date.now() },
+    { id: 5, dayOfWeek: 2, startTime: '11:30', endTime: '14:00', isActive: 1, createdAt: Date.now() },
+    { id: 6, dayOfWeek: 2, startTime: '14:30', endTime: '17:00', isActive: 1, createdAt: Date.now() },
+    // Mercredi (dayOfWeek = 3)
+    { id: 7, dayOfWeek: 3, startTime: '08:30', endTime: '11:00', isActive: 1, createdAt: Date.now() },
+    { id: 8, dayOfWeek: 3, startTime: '11:30', endTime: '14:00', isActive: 1, createdAt: Date.now() },
+    { id: 9, dayOfWeek: 3, startTime: '14:30', endTime: '17:00', isActive: 1, createdAt: Date.now() },
+    // Jeudi (dayOfWeek = 4)
+    { id: 10, dayOfWeek: 4, startTime: '08:30', endTime: '11:00', isActive: 1, createdAt: Date.now() },
+    { id: 11, dayOfWeek: 4, startTime: '11:30', endTime: '14:00', isActive: 1, createdAt: Date.now() },
+    { id: 12, dayOfWeek: 4, startTime: '14:30', endTime: '17:00', isActive: 1, createdAt: Date.now() },
+    // Vendredi (dayOfWeek = 5)
+    { id: 13, dayOfWeek: 5, startTime: '08:30', endTime: '11:00', isActive: 1, createdAt: Date.now() },
+    { id: 14, dayOfWeek: 5, startTime: '11:30', endTime: '14:00', isActive: 1, createdAt: Date.now() },
+    { id: 15, dayOfWeek: 5, startTime: '14:30', endTime: '17:00', isActive: 1, createdAt: Date.now() },
+    // Samedi (dayOfWeek = 6)
+    { id: 16, dayOfWeek: 6, startTime: '08:30', endTime: '11:00', isActive: 1, createdAt: Date.now() },
+    { id: 17, dayOfWeek: 6, startTime: '11:30', endTime: '14:00', isActive: 1, createdAt: Date.now() },
+    { id: 18, dayOfWeek: 6, startTime: '14:30', endTime: '17:00', isActive: 1, createdAt: Date.now() },
+  ];
+
+  // ============================================
   // CourseCredits - Crédits de cours pour les étudiants
   // 1 séance = 2h30 de cours
   // ============================================
@@ -434,8 +465,10 @@ export async function seedDatabase(): Promise<void> {
   await db.courseSessions.bulkAdd(courseSessions);
   await db.reservations.bulkAdd(reservations);
   await db.timeSlots.bulkAdd(timeSlots);
+  await db.schoolSchedule.bulkAdd(schoolSchedules);
   await db.courseCredits.bulkAdd(courseCredits);
   await db.userConsents.bulkAdd(userConsents);
 
   console.log('Database seeded successfully!');
+  console.log(`Initialized ${schoolSchedules.length} default school schedules`);
 }

@@ -31,6 +31,39 @@ export function DashboardPage() {
   const activeCourses = courses.filter((c) => c.isActive === 1);
   const activeReservations = reservations.filter((r) => r.status !== 'cancelled');
 
+  const handleResetDatabase = async () => {
+    if (!confirm('⚠️ Attention !\n\nCette action va supprimer toutes les données de la base.\n\nÊtes-vous sûr de vouloir continuer ?')) {
+      return;
+    }
+
+    try {
+      console.log('🔄 Réinitialisation en cours...');
+      
+      await new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('KiteSurfSchoolDB');
+        request.onsuccess = resolve;
+        request.onerror = reject;
+        request.onblocked = () => reject(new Error('Base verrouillée'));
+      });
+      
+      console.log('✅ Base de données supprimée !');
+      console.log('📥 Rechargement des données de seed...');
+      console.log('');
+      console.log('📚 Comptes de test:');
+      console.log('   Admin:     admin@kiteschool.com / admin123');
+      console.log('   Moniteur:  instructor@kiteschool.com / instructor123');
+      console.log('   Étudiant:  student@kiteschool.com / student123');
+      console.log('');
+      
+      alert('✅ Base de données réinitialisée avec succès !\n\nLes données de test vont être rechargées.');
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('❌ Erreur:', error);
+      alert('❌ Erreur lors de la réinitialisation:\n' + (error as Error).message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -192,6 +225,32 @@ export function DashboardPage() {
               </Card>
             </a>
           )}
+        </div>
+
+        {/* Maintenance - Bouton de réinitialisation */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <details className="bg-gray-50 rounded-lg p-4">
+            <summary className="font-medium text-gray-700 cursor-pointer text-sm">
+              🔧 Maintenance (Admin uniquement)
+            </summary>
+            <div className="mt-4">
+              <p className="text-sm text-gray-600 mb-3">
+                Réinitialiser la base de données avec les données de test
+              </p>
+              <button
+                onClick={handleResetDatabase}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Réinitialiser la base de données
+              </button>
+              <p className="text-xs text-gray-500 mt-2">
+                ⚠️ Cette action est irréversible. Toutes les données seront supprimées.
+              </p>
+            </div>
+          </details>
         </div>
       </main>
     </div>

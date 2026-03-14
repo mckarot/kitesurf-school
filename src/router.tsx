@@ -27,6 +27,7 @@ import { DeleteAccountPage } from './pages/Profile/DeleteAccountPage';
 import { ConfirmDeletionPage, confirmDeletionLoader } from './pages/Profile/ConfirmDeletionPage';
 import { ConsentsPage } from './pages/Profile/ConsentsPage';
 import { EditProfilePage } from './pages/Profile/EditProfilePage';
+import { SchoolSchedulePage } from './pages/Admin/SchoolSchedule';
 
 export const router = createBrowserRouter([
   {
@@ -60,6 +61,11 @@ export const router = createBrowserRouter([
     element: <CreditsPage />,
     loader: creditsLoader,
     errorElement: <DbErrorBoundary><CreditsErrorBoundary><div /></CreditsErrorBoundary></DbErrorBoundary>,
+  },
+  {
+    path: '/admin/school-schedule',
+    element: <SchoolSchedulePage />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
   },
   {
     path: '/instructor',

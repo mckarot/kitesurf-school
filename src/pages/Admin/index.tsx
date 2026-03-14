@@ -95,6 +95,16 @@ export function AdminPage() {
             </div>
             <div className="flex items-center gap-3">
               <a
+                href="/admin/school-schedule"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
+                aria-label="Gérer l'emploi du temps de l'école"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Emploi du temps
+              </a>
+              <a
                 href="/admin/credits"
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition"
                 aria-label="Gérer les crédits de cours"

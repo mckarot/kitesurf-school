@@ -14,21 +14,21 @@ import type { InstructorLoaderData } from './loader';
 
 /**
  * Page Moniteur - Espace de Gestion
- * 
+ *
  * Route: /instructor
- * 
+ *
  * Fonctionnalités:
  * - Vue d'ensemble des cours assignés
  * - Liste des élèves assignés avec leurs soldes de crédits
  * - Emploi du temps avec les noms des élèves réservés
  * - Statistiques personnelles
- * 
+ *
  * Données chargées par loader:
  * - credits: Tous les crédits de cours (filtrage en mémoire)
  * - timeSlots: Créneaux horaires du moniteur
  * - students: Tous les élèves
  * - reservations: Toutes les réservations
- * 
+ *
  * @returns JSX.Element - Page moniteur
  */
 export function InstructorPage() {
@@ -75,6 +75,16 @@ export function InstructorPage() {
               </div>
               <div className="flex items-center gap-3">
                 <a
+                  href="/instructor/timeslots"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition"
+                  aria-label="Gérer mes indisponibilités"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Indisponibilités
+                </a>
+                <a
                   href="/instructor/calendar"
                   className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition"
                 >
@@ -82,15 +92,6 @@ export function InstructorPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   Calendrier
-                </a>
-                <a
-                  href="/instructor/timeslots"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Créneaux
                 </a>
                 <a
                   href="/reservations"
