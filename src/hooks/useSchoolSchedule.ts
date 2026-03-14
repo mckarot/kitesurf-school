@@ -9,6 +9,7 @@ interface UseSchoolScheduleReturn {
   schedules: SchoolSchedule[];
   isLoading: boolean;
   error: Error | null;
+  loadSchedules: () => Promise<void>;
   createSchedule: (input: CreateSchoolScheduleInput) => Promise<void>;
   updateSchedule: (id: number, updates: Partial<SchoolSchedule>) => Promise<void>;
   deleteSchedule: (id: number) => Promise<void>;
@@ -161,6 +162,7 @@ export function useSchoolSchedule(): UseSchoolScheduleReturn {
     schedules,
     isLoading,
     error,
+    loadSchedules,
     createSchedule,
     updateSchedule,
     deleteSchedule,

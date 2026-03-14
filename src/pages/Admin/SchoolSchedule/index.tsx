@@ -1,7 +1,7 @@
 // src/pages/Admin/SchoolSchedule/index.tsx
 // Page Admin - Gestion des emplois du temps de l'école
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSchoolSchedule } from '../../../hooks/useSchoolSchedule';
 import { Card, CardBody, CardHeader } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -28,10 +28,16 @@ export function SchoolSchedulePage() {
     updateSchedule,
     deleteSchedule,
     resetToDefaults,
+    loadSchedules,
   } = useSchoolSchedule();
 
   const [showForm, setShowForm] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<{ id: number; dayOfWeek: number; startTime: string; endTime: string } | null>(null);
+
+  // Charge les créneaux au montage
+  useEffect(() => {
+    loadSchedules();
+  }, [loadSchedules]);
 
   const handleCreate = async (data: { dayOfWeek: number; startTime: string; endTime: string }) => {
     await createSchedule({
