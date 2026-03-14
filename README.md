@@ -138,7 +138,10 @@ src/
 ## 🎯 Système de crédits
 
 - **1 crédit = 1 séance de 2h30**
-- Sessions disponibles : **08:30-11:00** et **14:30-17:00**
+- **3 créneaux fixes par jour** :
+  - **Matin 1** : 08:30 - 11:00
+  - **Matin 2** : 11:30 - 14:00
+  - **Après-midi** : 14:30 - 17:00
 - 1 réservation = **1 séance consommée**
 
 ## 📄 License

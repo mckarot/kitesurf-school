@@ -162,7 +162,10 @@ interface Reservation {
 
 **Business Logic** :
 - 1 réservation = **1 séance consommée** (2h30 de cours)
-- Sessions disponibles : **08:30-11:00** et **14:30-17:00**
+- **3 créneaux fixes par jour** :
+  - **Matin 1** : 08:30 - 11:00 (2h30)
+  - **Matin 2** : 11:30 - 14:00 (2h30)
+  - **Après-midi** : 14:30 - 17:00 (2h30)
 
 ### **Pages Élève**
 - `/student` - Réserver un cours
