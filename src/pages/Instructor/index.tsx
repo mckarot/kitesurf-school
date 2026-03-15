@@ -1,35 +1,31 @@
 // src/pages/Instructor/index.tsx
+// Espace Moniteur avec design Metalab
 
 import { useLoaderData } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { useCourses } from '../../hooks/useCourses';
 import { useReservations } from '../../hooks/useReservations';
-import { Card, CardBody } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Navigate } from 'react-router-dom';
 import { AssignedStudents } from './AssignedStudents';
 import { ScheduleWithStudents } from './ScheduleWithStudents';
 import { InstructorErrorBoundary } from './InstructorErrorBoundary';
 import type { InstructorLoaderData } from './loader';
+import { 
+  Users, 
+  Calendar, 
+  BookOpen, 
+  Clock, 
+  AlertCircle,
+  TrendingUp,
+  CheckCircle,
+  UserCheck
+} from 'lucide-react';
 
 /**
  * Page Moniteur - Espace de Gestion
- *
- * Route: /instructor
- *
- * Fonctionnalités:
- * - Vue d'ensemble des cours assignés
- * - Liste des élèves assignés avec leurs soldes de crédits
- * - Emploi du temps avec les noms des élèves réservés
- * - Statistiques personnelles
- *
- * Données chargées par loader:
- * - credits: Tous les crédits de cours (filtrage en mémoire)
- * - timeSlots: Créneaux horaires du moniteur
- * - students: Tous les élèves
- * - reservations: Toutes les réservations
- *
- * @returns JSX.Element - Page moniteur
+ * Design Metalab harmonisé
  */
 export function InstructorPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -37,10 +33,10 @@ export function InstructorPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div aria-busy="true" aria-live="polite" className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
-          <p className="text-gray-600">Chargement...</p>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Chargement...</p>
         </div>
       </div>
     );
@@ -58,250 +54,291 @@ export function InstructorPage() {
     ).length;
   };
 
+  const totalReservations = myCourses.reduce((acc, c) => acc + getReservationCount(c.id), 0);
+
   return (
     <InstructorErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+        {/* Hero Header */}
+        <motion.header
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 text-white"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <a href="/dashboard" className="text-gray-600 hover:text-gray-900">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </a>
-                <h1 className="text-xl font-bold text-gray-900">Espace Moniteur</h1>
+              <div className="flex items-center space-x-4">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                  className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-xl"
+                >
+                  <UserCheck className="w-8 h-8 text-white" />
+                </motion.div>
+                <div>
+                  <motion.h1
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3, duration: 0.6 }}
+                    className="text-4xl md:text-5xl font-bold"
+                  >
+                    Bonjour {user.firstName} !
+                  </motion.h1>
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4, duration: 0.6 }}
+                    className="flex items-center space-x-3 mt-2"
+                  >
+                    <Badge variant="info" className="text-sm px-4 py-1.5 bg-white/20 text-white border-white/30">
+                      Moniteur
+                    </Badge>
+                    <span className="text-purple-100">
+                      {user.email}
+                    </span>
+                  </motion.div>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <a
-                  href="/instructor/timeslots"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition"
-                  aria-label="Gérer mes indisponibilités"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Indisponibilités
-                </a>
-                <a
-                  href="/instructor/calendar"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Calendrier
-                </a>
-                <a
-                  href="/reservations"
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  Historique
-                </a>
-              </div>
+              <motion.a
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                href="/dashboard"
+                className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full hover:bg-white/30 transition-all"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                <span className="font-medium">Retour</span>
+              </motion.a>
             </div>
           </div>
-        </header>
+        </motion.header>
 
-        {/* Stats */}
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          {/* Statistiques globales */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card variant="elevated">
-              <CardBody>
-                <p className="text-sm text-gray-600 mb-1">Mes cours</p>
-                <p className="text-3xl font-bold text-blue-600">{myCourses.length}</p>
-              </CardBody>
-            </Card>
-            <Card variant="elevated">
-              <CardBody>
-                <p className="text-sm text-gray-600 mb-1">Réservations totales</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {myCourses.reduce((acc, c) => acc + getReservationCount(c.id), 0)}
-                </p>
-              </CardBody>
-            </Card>
-            <Card variant="elevated">
-              <CardBody>
-                <p className="text-sm text-gray-600 mb-1">Élèves inscrits</p>
-                <p className="text-3xl font-bold text-purple-600">{students.length}</p>
-              </CardBody>
-            </Card>
-            <Card variant="elevated">
-              <CardBody>
-                <p className="text-sm text-gray-600 mb-1">Créneaux horaires</p>
-                <p className="text-3xl font-bold text-orange-600">{timeSlots.length}</p>
-              </CardBody>
-            </Card>
-          </div>
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-8">
+          {/* Stats Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          >
+            {/* Mes cours */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.02 }}
+              className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Mes cours</p>
+                  <p className="text-4xl font-bold text-purple-600">{myCourses.length}</p>
+                </div>
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-400 rounded-2xl flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Réservations totales */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.02 }}
+              className="bg-white rounded-3xl shadow-xl p-6 border border-green-100"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Réservations</p>
+                  <p className="text-4xl font-bold text-green-600">{totalReservations}</p>
+                </div>
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-400 rounded-2xl flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Élèves inscrits */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.02 }}
+              className="bg-white rounded-3xl shadow-xl p-6 border border-blue-100"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Élèves</p>
+                  <p className="text-4xl font-bold text-blue-600">{students.length}</p>
+                </div>
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Créneaux horaires */}
+            <motion.div
+              whileHover={{ y: -4, scale: 1.02 }}
+              className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Créneaux</p>
+                  <p className="text-4xl font-bold text-orange-600">{timeSlots.length}</p>
+                </div>
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-yellow-400 rounded-2xl flex items-center justify-center">
+                  <Clock className="w-8 h-8 text-white" />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Action Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="flex flex-wrap gap-4 mb-8"
+          >
+            <a
+              href="/instructor/timeslots"
+              className="flex items-center space-x-2 bg-white text-red-600 px-6 py-3 rounded-full font-semibold hover:bg-red-50 transition-all shadow-lg hover:shadow-xl"
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span>Indisponibilités</span>
+            </a>
+            <a
+              href="/instructor/calendar"
+              className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-full font-semibold hover:bg-purple-50 transition-all shadow-lg hover:shadow-xl"
+            >
+              <Calendar className="w-5 h-5" />
+              <span>Calendrier</span>
+            </a>
+            <a
+              href="/reservations"
+              className="flex items-center space-x-2 bg-white text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl"
+            >
+              <BookOpen className="w-5 h-5" />
+              <span>Historique</span>
+            </a>
+          </motion.div>
 
           {/* Section: Mes élèves assignés */}
-          <section className="mb-8" aria-labelledby="assigned-students-heading">
-            <h2 id="assigned-students-heading" className="sr-only">
-              Mes élèves assignés
-            </h2>
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="mb-8"
+          >
+            <div className="flex items-center space-x-2 mb-6">
+              <UserCheck className="w-6 h-6 text-purple-600" />
+              <h2 className="text-2xl font-bold text-gray-900">Mes élèves assignés</h2>
+            </div>
             <AssignedStudents
               students={students}
               allCredits={credits}
               instructorId={user.id}
             />
-          </section>
+          </motion.section>
 
           {/* Section: Emploi du temps avec élèves */}
-          <section className="mb-8" aria-labelledby="schedule-heading">
-            <h2 id="schedule-heading" className="sr-only">
-              Emploi du temps
-            </h2>
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+            className="mb-8"
+          >
+            <div className="flex items-center space-x-2 mb-6">
+              <Calendar className="w-6 h-6 text-pink-600" />
+              <h2 className="text-2xl font-bold text-gray-900">Emploi du temps</h2>
+            </div>
             <ScheduleWithStudents
               timeSlots={timeSlots}
               reservations={reservations}
               students={students}
               courses={courses}
             />
-          </section>
+          </motion.section>
 
           {/* My Courses */}
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Mes cours</h2>
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="mb-8"
+          >
+            <div className="flex items-center space-x-2 mb-6">
+              <TrendingUp className="w-6 h-6 text-blue-600" />
+              <h2 className="text-2xl font-bold text-gray-900">Mes cours</h2>
+            </div>
             {myCourses.length === 0 ? (
-              <Card variant="elevated">
-                <CardBody className="text-center py-12">
-                  <svg
-                    className="w-16 h-16 text-gray-300 mx-auto mb-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                    />
-                  </svg>
-                  <p className="text-gray-600 mb-2">Aucun cours assigné</p>
-                  <p className="text-sm text-gray-500">
-                    Contactez l'administrateur pour être assigné à des cours
-                  </p>
-                </CardBody>
-              </Card>
+              <div className="bg-white rounded-3xl shadow-xl p-12 text-center border border-purple-100">
+                <div className="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <BookOpen className="w-10 h-10 text-gray-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">Aucun cours assigné</h3>
+                <p className="text-gray-600 mb-6">
+                  Contactez l'administrateur pour être assigné à des cours
+                </p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {myCourses.map((course) => {
+                {myCourses.map((course, index) => {
                   const reservationCount = getReservationCount(course.id);
                   return (
-                    <Card key={course.id} variant="elevated">
-                      <CardBody>
-                        <div className="flex items-start justify-between mb-3">
-                          <Badge
-                            variant={
-                              course.level === 'beginner'
-                                ? 'success'
-                                : course.level === 'intermediate'
-                                ? 'warning'
-                                : 'danger'
-                            }
-                          >
-                            {course.level === 'beginner'
-                              ? 'Débutant'
+                    <motion.div
+                      key={course.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.4 }}
+                      whileHover={{ y: -4, scale: 1.02 }}
+                      className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <Badge
+                          variant={
+                            course.level === 'beginner'
+                              ? 'success'
                               : course.level === 'intermediate'
-                              ? 'Intermédiaire'
-                              : 'Avancé'}
-                          </Badge>
-                          <span className="text-sm text-gray-500">
-                            {reservationCount}/{course.maxStudents} élèves
-                          </span>
+                              ? 'warning'
+                              : 'danger'
+                          }
+                          className="text-sm"
+                        >
+                          {course.level === 'beginner'
+                            ? '🌱 Débutant'
+                            : course.level === 'intermediate'
+                            ? '⚡ Intermédiaire'
+                            : '🔥 Avancé'}
+                        </Badge>
+                        <span className="text-sm text-gray-500 font-medium">
+                          {reservationCount}/{course.maxStudents} élèves
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-gray-900 mb-3">
+                        {course.title}
+                      </h3>
+
+                      <p className="text-gray-600 mb-4 line-clamp-2">
+                        {course.description}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-purple-100">
+                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <Users className="w-4 h-4 text-purple-600" />
+                          <span>Max {course.maxStudents}</span>
                         </div>
-
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          {course.title}
-                        </h3>
-
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                          {course.description}
-                        </p>
-
-                        <div className="pt-4 border-t border-gray-100">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-500">Prix</span>
-                            <span className="font-medium text-gray-900">{course.price}€</span>
-                          </div>
+                        <div className="text-lg font-bold text-purple-600">
+                          {course.price}€
                         </div>
-                      </CardBody>
-                    </Card>
+                      </div>
+                    </motion.div>
                   );
                 })}
               </div>
             )}
-          </section>
-
-          {/* Recent Reservations */}
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Réservations récentes
-            </h2>
-            {reservations.filter((r) => myCourses.some((c) => c.id === r.courseId)).length === 0 ? (
-              <p className="text-gray-600 text-center py-8">Aucune réservation récente</p>
-            ) : (
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Cours
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        Statut
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {reservations
-                      .filter((r) => myCourses.some((c) => c.id === r.courseId))
-                      .map((reservation) => {
-                        const course = myCourses.find((c) => c.id === reservation.courseId);
-                        return (
-                          <tr key={reservation.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-900">#{reservation.id}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900">
-                              {course?.title || `Cours #${reservation.courseId}`}
-                            </td>
-                            <td className="px-4 py-3">
-                              <Badge
-                                variant={
-                                  reservation.status === 'confirmed'
-                                    ? 'success'
-                                    : reservation.status === 'cancelled'
-                                    ? 'danger'
-                                    : reservation.status === 'completed'
-                                    ? 'info'
-                                    : 'warning'
-                                }
-                              >
-                                {reservation.status === 'confirmed'
-                                  ? 'Confirmé'
-                                  : reservation.status === 'cancelled'
-                                  ? 'Annulé'
-                                  : reservation.status === 'completed'
-                                  ? 'Terminé'
-                                  : 'En attente'}
-                              </Badge>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+          </motion.section>
         </main>
       </div>
     </InstructorErrorBoundary>
