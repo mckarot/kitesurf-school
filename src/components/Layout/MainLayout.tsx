@@ -201,20 +201,15 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
             <div className="hidden lg:flex items-center space-x-4">
               {user && (
                 <div className="flex items-center space-x-4">
-                  {/* Admin - Dashboard instead of History */}
+                  {/* Admin - Dashboard + Réservations + Crédits */}
                   {user.role === 'admin' && (
                     <>
                       <Link
-                        to="/admin"
+                        to="/dashboard"
                         className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                        title="Tableau de bord"
                       >
-                        Admin Dashboard
-                      </Link>
-                      <Link
-                        to="/admin/credits"
-                        className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
-                      >
-                        Crédits
+                        Dashboard
                       </Link>
                       <Link
                         to="/admin/reservations-validation"
@@ -226,6 +221,12 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
                             {pendingReservationsCount > 9 ? '9+' : pendingReservationsCount}
                           </span>
                         )}
+                      </Link>
+                      <Link
+                        to="/admin/credits"
+                        className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                      >
+                        Crédits
                       </Link>
                     </>
                   )}
@@ -477,18 +478,11 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
                   {user.role === 'admin' && (
                     <>
                       <Link
-                        to="/admin"
+                        to="/dashboard"
                         className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
                       >
                         <Shield className="w-5 h-5" />
-                        <span className="font-medium">Admin Dashboard</span>
-                      </Link>
-                      <Link
-                        to="/admin/credits"
-                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
-                      >
-                        <Calendar className="w-5 h-5" />
-                        <span className="font-medium">Crédits</span>
+                        <span className="font-medium">Dashboard</span>
                       </Link>
                       <Link
                         to="/admin/reservations-validation"
@@ -501,6 +495,13 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
                             {pendingReservationsCount > 9 ? '9+' : pendingReservationsCount}
                           </span>
                         )}
+                      </Link>
+                      <Link
+                        to="/admin/credits"
+                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      >
+                        <Calendar className="w-5 h-5" />
+                        <span className="font-medium">Crédits</span>
                       </Link>
                     </>
                   )}

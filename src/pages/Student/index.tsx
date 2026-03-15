@@ -50,14 +50,26 @@ export function StudentPage() {
       throw new Error('Données de réservation invalides');
     }
 
+    console.log('[StudentPage] Confirmation réservation:', {
+      userId: user.id,
+      sessionId: session.id,
+      course: selectedCourse.title,
+    });
+
     const result = await createReservationWithCredit(user.id, session.id, sessionsRequired);
+
+    console.log('[StudentPage] Résultat:', result);
 
     if (!result.success) {
       throw new Error(result.error || 'Échec de la réservation');
     }
 
-    await refreshBalance();
-    navigate(0);
+    // Fermer le modal - pas de rechargement
+    setIsBookingModalOpen(false);
+    setSelectedCourse(null);
+    
+    // Message de succès
+    alert('✅ Réservation confirmée avec succès ! Vous recevrez une notification.');
   };
 
   const isReserved = (courseId: number): boolean => {
