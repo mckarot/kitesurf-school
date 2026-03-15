@@ -1,17 +1,25 @@
 // src/pages/TimeSlots/index.tsx
-// Page Moniteur - Gestion des indisponibilités
-// Les moniteurs peuvent bloquer des créneaux spécifiques (maladie, congés, etc.)
+// Page Moniteur - Gestion des indisponibilités avec design Metalab
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { useSchoolSchedule } from '../../hooks/useSchoolSchedule';
 import { useInstructorAvailability } from '../../hooks/useInstructorAvailability';
 import { InstructorAvailabilityForm } from './InstructorAvailabilityForm';
 import { InstructorAvailabilityList } from './InstructorAvailabilityList';
 import { Button } from '../../components/ui/Button';
-import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Navigate } from 'react-router-dom';
 import type { SchoolSchedule } from '../../types';
+import { 
+  Clock, 
+  AlertCircle, 
+  Calendar, 
+  Plus, 
+  ArrowLeft,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
 
 interface AvailabilityViewItem {
   schedule: SchoolSchedule;
@@ -119,10 +127,10 @@ export function TimeSlotsPage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div aria-busy="true" aria-live="polite" className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
-          <p className="text-gray-600">Chargement...</p>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Chargement...</p>
         </div>
       </div>
     );
@@ -136,114 +144,233 @@ export function TimeSlotsPage() {
   const dateObj = new Date(selectedDate);
   const dayName = dayNames[dateObj.getDay() === 0 ? 6 : dateObj.getDay()];
 
+  const totalSlots = availabilityItems.length;
+  const availableSlots = availabilityItems.filter(item => !item.availability || item.availability.isAvailable === 1).length;
+  const unavailableSlots = availabilityItems.filter(item => item.availability?.isAvailable === 0).length;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+      {/* Hero Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 text-white"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <a href="/instructor" className="text-gray-600 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </a>
-              <h1 className="text-xl font-bold text-gray-900">Mes indisponibilités</h1>
+            <div className="flex items-center space-x-4">
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => window.history.back()}
+                className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-white/30 transition-all"
+                aria-label="Retour"
+              >
+                <ArrowLeft className="w-6 h-6 text-white" />
+              </motion.button>
+              <div>
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="flex items-center space-x-3 mb-3"
+                >
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-bold">Mes Indisponibilités</h1>
+                </motion.div>
+                <motion.p
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="text-purple-100 text-lg"
+                >
+                  Gérez vos créneaux indisponibles (maladie, congés, etc.)
+                </motion.p>
+              </div>
             </div>
-            <Button
-              variant="primary"
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5, duration: 0.4 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowForm(!showForm)}
               disabled={availabilityItems.length === 0}
+              className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-full font-semibold hover:bg-purple-50 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {showForm ? 'Annuler' : 'Ajouter une indisponibilité'}
-            </Button>
+              <Plus className="w-5 h-5" />
+              <span>{showForm ? 'Annuler' : 'Ajouter indisponibilité'}</span>
+            </motion.button>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-8">
+        {/* Stats Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+        >
+          {/* Total créneaux */}
+          <motion.div
+            whileHover={{ y: -4, scale: 1.02 }}
+            className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Total créneaux</p>
+                <p className="text-4xl font-bold text-purple-600">{totalSlots}</p>
+              </div>
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-400 rounded-2xl flex items-center justify-center">
+                <Clock className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Disponibles */}
+          <motion.div
+            whileHover={{ y: -4, scale: 1.02 }}
+            className="bg-white rounded-3xl shadow-xl p-6 border border-green-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Disponibles</p>
+                <p className="text-4xl font-bold text-green-600">{availableSlots}</p>
+              </div>
+              <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-400 rounded-2xl flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Indisponibles */}
+          <motion.div
+            whileHover={{ y: -4, scale: 1.02 }}
+            className="bg-white rounded-3xl shadow-xl p-6 border border-red-100"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Indisponibles</p>
+                <p className="text-4xl font-bold text-red-600">{unavailableSlots}</p>
+              </div>
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-400 rounded-2xl flex items-center justify-center">
+                <XCircle className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+
         {/* Date Selector */}
-        <Card variant="elevated" className="mb-6">
-          <CardBody>
-            <div className="flex items-center gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100 mb-8"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-5 h-5 text-purple-600" />
               <label htmlFor="date" className="text-sm font-medium text-gray-700">
                 Sélectionner une date :
               </label>
-              <input
-                type="date"
-                id="date"
-                value={selectedDate}
-                onChange={(e) => handleDateChange(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <span className="text-gray-600">
-                {dayName} {dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </span>
             </div>
-          </CardBody>
-        </Card>
+            <input
+              type="date"
+              id="date"
+              value={selectedDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="rounded-xl border border-gray-300 px-4 py-2 text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+            />
+            <span className="text-gray-600 font-medium">
+              {dayName} {dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+          </div>
+        </motion.div>
 
         {/* Info Card */}
-        <Card variant="elevated" className="mb-6">
-          <CardBody className="bg-blue-50 border-blue-200">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-blue-900">Comment gérer vos indisponibilités ?</p>
-                <p className="text-sm text-blue-700 mt-1">
-                  Les créneaux horaires de l'école s'affichent ci-dessous. Cliquez sur un créneau pour le marquer comme indisponible (maladie, congés, etc.).
-                  Un créneau non marqué est considéré comme disponible par défaut.
-                </p>
-              </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-3xl shadow-lg p-6 border border-blue-100 mb-8"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-5 h-5 text-blue-600" />
             </div>
-          </CardBody>
-        </Card>
+            <div>
+              <p className="text-sm font-semibold text-blue-900">Comment gérer vos indisponibilités ?</p>
+              <p className="text-sm text-blue-700 mt-2 leading-relaxed">
+                Les créneaux horaires de l'école s'affichent ci-dessous. Cliquez sur un créneau pour le marquer comme indisponible (maladie, congés, etc.).
+                Un créneau non marqué est considéré comme disponible par défaut.
+              </p>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Add Reason Form */}
         {showForm && selectedScheduleId && (
-          <Card variant="elevated" className="mb-6">
-            <CardHeader>
-              <h2 className="font-semibold text-gray-900">Ajouter une indisponibilité</h2>
-            </CardHeader>
-            <CardBody>
-              <InstructorAvailabilityForm
-                scheduleId={selectedScheduleId}
-                onSubmit={handleAddReason}
-                onCancel={() => {
-                  setShowForm(false);
-                  setSelectedScheduleId(null);
-                }}
-                isLoading={isLoading}
-              />
-            </CardBody>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+            className="bg-white rounded-3xl shadow-xl p-6 border border-pink-100 mb-8"
+          >
+            <div className="flex items-center space-x-2 mb-4">
+              <Plus className="w-5 h-5 text-pink-600" />
+              <h2 className="text-lg font-bold text-gray-900">Ajouter une indisponibilité</h2>
+            </div>
+            <InstructorAvailabilityForm
+              scheduleId={selectedScheduleId}
+              onSubmit={handleAddReason}
+              onCancel={() => {
+                setShowForm(false);
+                setSelectedScheduleId(null);
+              }}
+              isLoading={isLoading}
+            />
+          </motion.div>
         )}
 
         {/* Loading State */}
         {scheduleLoading && (
-          <div aria-busy="true" aria-live="polite" className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
-            <p className="text-gray-600">Chargement...</p>
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mx-auto mb-4" />
+            <p className="text-gray-600 font-medium">Chargement...</p>
           </div>
         )}
 
         {/* Availability List */}
         {!scheduleLoading && (
-          <InstructorAvailabilityList
-            items={availabilityItems}
-            onToggle={handleToggleAvailability}
-            onDelete={handleDeleteAvailability}
-            onOpenForm={(scheduleId) => {
-              setSelectedScheduleId(scheduleId);
-              setShowForm(true);
-            }}
-            isLoading={isLoading}
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+          >
+            <InstructorAvailabilityList
+              items={availabilityItems}
+              onToggle={handleToggleAvailability}
+              onDelete={handleDeleteAvailability}
+              onOpenForm={(scheduleId) => {
+                setSelectedScheduleId(scheduleId);
+                setShowForm(true);
+              }}
+              isLoading={isLoading}
+            />
+          </motion.div>
         )}
       </main>
     </div>
   );
 }
+
+export default TimeSlotsPage;
