@@ -34,6 +34,7 @@ const navItems = [
 export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -52,12 +53,13 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
 
   // Redirect to login if auth required and user not connected
   useEffect(() => {
-    if (requireAuth && !user) {
-      navigate('/login', { state: { from: location.pathname } });
+    if (requireAuth && !user && !isRedirecting) {
+      setIsRedirecting(true);
+      navigate('/login', { state: { from: location.pathname }, replace: true });
     } else if (requireAuth && user && allowedRoles && !allowedRoles.includes(user.role)) {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, requireAuth, allowedRoles, navigate, location.pathname]);
+  }, [user, requireAuth, allowedRoles, navigate, location.pathname, isRedirecting]);
 
   const handleLogout = () => {
     logout();
