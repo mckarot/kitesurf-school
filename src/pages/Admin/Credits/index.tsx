@@ -68,26 +68,39 @@ export function CreditsPage() {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="flex items-center justify-between">
-              <div>
-                <motion.div
+              <div className="flex items-center space-x-4">
+                <motion.button
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2, duration: 0.6 }}
-                  className="flex items-center space-x-3 mb-3"
+                  transition={{ delay: 0.2, duration: 0.4 }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => navigate('/dashboard')}
+                  className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-white/30 transition-all"
+                  aria-label="Retour au dashboard"
                 >
-                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <Gift className="w-6 h-6 text-white" />
-                  </div>
-                  <h1 className="text-4xl md:text-5xl font-bold">Gérer les Crédits</h1>
-                </motion.div>
-                <motion.p
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3, duration: 0.6 }}
-                  className="text-purple-100 text-lg"
-                >
-                  Ajoutez et suivez les crédits de cours des élèves
-                </motion.p>
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </motion.button>
+                <div>
+                  <motion.h1
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3, duration: 0.6 }}
+                    className="text-4xl md:text-5xl font-bold"
+                  >
+                    Gérer les Crédits
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4, duration: 0.6 }}
+                    className="text-purple-100 text-lg mt-2"
+                  >
+                    Ajoutez et suivez les crédits de cours des élèves
+                  </motion.p>
+                </div>
               </div>
               <motion.button
                 initial={{ opacity: 0, scale: 0.9 }}
