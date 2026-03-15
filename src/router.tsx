@@ -189,7 +189,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/reservations',
-    element: <MainLayout requireAuth={true} allowedRoles={['student']} />,
+    element: <MainLayout requireAuth={true} allowedRoles={['student', 'instructor', 'admin']} />,
     errorElement: <ErrorBoundary><div /></ErrorBoundary>,
     children: [
       { index: true, element: <ReservationHistoryPage /> },

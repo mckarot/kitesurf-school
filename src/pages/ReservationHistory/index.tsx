@@ -21,7 +21,10 @@ export function ReservationHistoryPage() {
     setFilters,
     clearFilters,
     loadHistory,
-  } = useReservationHistory(user?.role === 'student' ? user.id : undefined);
+  } = useReservationHistory(
+    user?.role === 'student' ? user.id : undefined,
+    user?.role === 'instructor' ? user.id : undefined
+  );
 
   // RETURNS CONDITIONNELS APRÈS TOUS LES HOOKS
   if (authLoading) {

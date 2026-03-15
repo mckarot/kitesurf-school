@@ -29,7 +29,7 @@ const defaultFilters: ReservationHistoryFilters = {
   searchQuery: '',
 };
 
-export function useReservationHistory(userId?: number): UseReservationHistoryReturn {
+export function useReservationHistory(userId?: number, instructorId?: number): UseReservationHistoryReturn {
   const [history, setHistory] = useState<ReservationHistoryItem[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<ReservationHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,22 +50,16 @@ export function useReservationHistory(userId?: number): UseReservationHistoryRet
         courses: courses.length,
         users: users.length,
         sessions: sessions.length,
+        userId,
+        instructorId,
       });
 
       const historyItems: ReservationHistoryItem[] = reservations.map((reservation) => {
         const course = courses.find((c) => c.id === reservation.courseId);
         const student = users.find((u) => u.id === reservation.studentId);
         // Chercher la session par ID d'abord, puis par courseId
-        const session = sessions.find((s) => s.id === reservation.sessionId) 
+        const session = sessions.find((s) => s.id === reservation.sessionId)
           || sessions.find((s) => s.courseId === reservation.courseId);
-
-        console.log('[useReservationHistory] Réservation:', {
-          id: reservation.id,
-          courseId: reservation.courseId,
-          sessionId: reservation.sessionId,
-          foundSession: !!session,
-          sessionDate: session?.date,
-        });
 
         return {
           id: reservation.id,
@@ -82,13 +76,18 @@ export function useReservationHistory(userId?: number): UseReservationHistoryRet
           location: session?.location || 'Non défini',
           status: reservation.status,
           createdAt: reservation.createdAt,
+          instructorId: course?.instructorId,
         };
       });
 
       // Filter by userId if provided (for student view)
-      const filtered = userId
-        ? historyItems.filter((item) => item.studentId === userId)
-        : historyItems;
+      // Filter by instructorId if provided (for instructor view)
+      let filtered = historyItems;
+      if (userId) {
+        filtered = filtered.filter((item) => item.studentId === userId);
+      } else if (instructorId) {
+        filtered = filtered.filter((item) => item.instructorId === instructorId);
+      }
 
       console.log('[useReservationHistory] Historique filtré:', filtered.length, 'réservations');
 
@@ -101,7 +100,7 @@ export function useReservationHistory(userId?: number): UseReservationHistoryRet
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, instructorId]);
 
   // Load history on mount
   useEffect(() => {

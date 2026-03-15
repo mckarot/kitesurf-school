@@ -214,13 +214,6 @@ export function InstructorPage() {
               <Calendar className="w-5 h-5" />
               <span>Calendrier</span>
             </a>
-            <a
-              href="/reservations"
-              className="flex items-center space-x-2 bg-white text-gray-700 px-6 py-3 rounded-full font-semibold hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl"
-            >
-              <BookOpen className="w-5 h-5" />
-              <span>Historique</span>
-            </a>
           </motion.div>
 
           {/* Section: Mes élèves assignés */}

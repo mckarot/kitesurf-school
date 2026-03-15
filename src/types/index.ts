@@ -447,6 +447,7 @@ export interface ReservationHistoryItem {
   location: string;
   status: Reservation['status'];
   createdAt: number;
+  instructorId?: number;
 }
 
 // ============================================
