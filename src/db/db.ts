@@ -23,6 +23,7 @@ import { configureV6Migration } from './migrations/v6';
 import { configureV7Migration } from './migrations/v7';
 import { configureV8Migration } from './migrations/v8';
 import { configureV9Migration } from './migrations/v9';
+import { configureV10Migration } from './migrations/v10';
 
 export class KiteSurfDB extends Dexie {
   users!: Table<User, number>;
@@ -136,6 +137,10 @@ export class KiteSurfDB extends Dexie {
     // - instructorAvailability: ++id (primary key), [instructorId+date+scheduleId] (composite for unique constraint),
     //   instructorId (filter by instructor), date (filter by date), isAvailable (filter availability)
     configureV9Migration(this);
+
+    // Version 10: Add composite index on courseSessions for efficient date/time queries
+    // - [courseId+date+startTime]: Required by useAvailableSessions hook for fast lookups
+    configureV10Migration(this);
   }
 }
 

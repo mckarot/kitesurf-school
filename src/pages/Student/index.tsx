@@ -14,7 +14,7 @@ import { Navigate } from 'react-router-dom';
 import { StudentBalance } from './StudentBalance';
 import { BookCourseModal } from './BookCourseModal';
 import { StudentErrorBoundary } from './StudentErrorBoundary';
-import type { CourseSession, CreateCourseSessionInput } from '../../types';
+import type { CourseSession } from '../../types';
 import type { StudentLoaderData } from './loader';
 
 /**
@@ -42,20 +42,13 @@ export function StudentPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { courses, isLoading: coursesLoading } = useCourses();
   const { createReservation, reservations, isLoading: reservationLoading } = useReservations();
-  const { credits, sessions, reservations: loaderReservations } = useLoaderData() as StudentLoaderData;
+  const { credits, reservations: loaderReservations } = useLoaderData() as StudentLoaderData;
   const { balance, refreshBalance } = useStudentBalance();
   const navigate = useNavigate();
 
-  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
-  const [selectedSession, setSelectedSession] = useState<CourseSession | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<{ id: number; title: string; price: number } | null>(null);
   const [sessionsRequired] = useState<number>(1); // 1 séance par réservation
-
-  useEffect(() => {
-    // Reset selection when component mounts
-    setSelectedCourseId(null);
-    setSelectedSession(null);
-  }, []);
 
   if (authLoading) {
     return (
@@ -72,21 +65,20 @@ export function StudentPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleReserveClick = (courseId: number, session: CourseSession) => {
-    setSelectedCourseId(courseId);
-    setSelectedSession(session);
+  const handleReserveClick = (course: { id: number; title: string; price: number }) => {
+    setSelectedCourse(course);
     setIsBookingModalOpen(true);
   };
 
-  const handleConfirmBooking = async () => {
-    if (!selectedSession || !user) {
+  const handleConfirmBooking = async (session: CourseSession) => {
+    if (!selectedCourse || !user) {
       throw new Error('Données de réservation invalides');
     }
 
     // Créer la réservation avec décrémentation des crédits (1 séance par réservation)
     const result = await createReservationWithCredit(
       user.id,
-      selectedSession.id,
+      session.id,
       sessionsRequired
     );
 
@@ -107,11 +99,6 @@ export function StudentPage() {
 
   const activeCourses = courses.filter((c) => c.isActive === 1);
   const hasSufficientBalance = (balance?.remainingSessions || 0) >= sessionsRequired;
-
-  // Trouver les sessions pour un cours donné
-  const getSessionsForCourse = (courseId: number): CourseSession[] => {
-    return sessions.filter(s => s.courseId === courseId && s.isActive === 1);
-  };
 
   return (
     <StudentErrorBoundary>
@@ -210,38 +197,6 @@ export function StudentPage() {
                           <span className="font-medium text-gray-900">{course.price}€</span>
                         </div>
                       </div>
-
-                      {/* Sessions disponibles */}
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Sessions disponibles :</p>
-                        {getSessionsForCourse(course.id).length > 0 ? (
-                          <div className="space-y-1">
-                            {getSessionsForCourse(course.id).map((session) => (
-                              <div
-                                key={session.id}
-                                className="flex items-center justify-between text-xs p-2 bg-gray-50 rounded"
-                              >
-                                <div>
-                                  <span className="font-medium">{new Date(session.date).toLocaleDateString('fr-FR')}</span>
-                                  <span className="mx-1">•</span>
-                                  <span>{session.startTime} - {session.endTime}</span>
-                                </div>
-                                <Button
-                                  variant={hasSufficientBalance ? 'primary' : 'secondary'}
-                                  size="sm"
-                                  onClick={() => handleReserveClick(course.id, session)}
-                                  disabled={!hasSufficientBalance || isReserved(course.id)}
-                                  className="ml-2"
-                                >
-                                  {isReserved(course.id) ? 'Réservé' : hasSufficientBalance ? 'Réserver' : 'Complet'}
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-500 italic">Aucune session disponible</p>
-                        )}
-                      </div>
                     </CardBody>
 
                     <div className="border-t border-gray-100 p-4">
@@ -254,34 +209,20 @@ export function StudentPage() {
                         >
                           Déjà réservé
                         </Button>
-                      ) : getSessionsForCourse(course.id).length === 0 ? (
-                        <Button
-                          variant="secondary"
-                          className="w-full"
-                          disabled
-                          aria-label={`Aucune session disponible pour ${course.title}`}
-                        >
-                          Aucune session disponible
-                        </Button>
                       ) : (
                         <Button
                           variant={hasSufficientBalance ? 'primary' : 'secondary'}
                           className="w-full"
-                          onClick={() => {
-                            const sessionList = getSessionsForCourse(course.id);
-                            if (sessionList.length > 0) {
-                              handleReserveClick(course.id, sessionList[0]);
-                            }
-                          }}
+                          onClick={() => handleReserveClick(course)}
                           disabled={!hasSufficientBalance}
-                          isLoading={reservationLoading && selectedCourseId === course.id}
+                          isLoading={reservationLoading}
                           aria-label={
                             hasSufficientBalance
                               ? `Réserver le cours ${course.title}`
                               : `Solde insuffisant pour ${course.title}`
                           }
                         >
-                          {hasSufficientBalance ? 'Voir toutes les sessions' : 'Solde insuffisant'}
+                          {hasSufficientBalance ? 'Réserver' : 'Solde insuffisant'}
                         </Button>
                       )}
                     </div>
@@ -316,9 +257,10 @@ export function StudentPage() {
           isOpen={isBookingModalOpen}
           onClose={() => {
             setIsBookingModalOpen(false);
-            setSelectedSession(null);
+            setSelectedCourse(null);
           }}
-          courseSession={selectedSession}
+          courseTitle={selectedCourse?.title || ''}
+          coursePrice={selectedCourse?.price || 0}
           sessionsRequired={sessionsRequired}
           currentBalance={balance?.remainingSessions || 0}
           onConfirm={handleConfirmBooking}
