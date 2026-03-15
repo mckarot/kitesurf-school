@@ -62,33 +62,33 @@ export async function seedDatabase(): Promise<void> {
     {
       id: 1,
       instructorId: 2,
-      title: 'Introduction au Kitesurf',
-      description: 'Apprenez les bases du kitesurf en toute sécurité.',
+      title: 'Cours Collectif',
+      description: 'Apprenez en groupe dans une ambiance conviviale. Matériel inclus, briefing théorique et pratique encadrée.',
       level: 'beginner',
       maxStudents: 6,
-      price: 150,
+      price: 70,
       isActive: 1,
       createdAt: Date.now(),
     },
     {
       id: 2,
       instructorId: 2,
-      title: 'Perfectionnement Kitesurf',
-      description: 'Améliorez votre technique et apprenez les figures intermédiaires.',
-      level: 'intermediate',
-      maxStudents: 4,
-      price: 200,
+      title: 'Cours Particulier',
+      description: 'Un accompagnement 100% personnalisé avec moniteur dédié. Matériel premium et vidéo analyse.',
+      level: 'beginner',
+      maxStudents: 1,
+      price: 120,
       isActive: 1,
       createdAt: Date.now(),
     },
     {
       id: 3,
       instructorId: 2,
-      title: 'Kitesurf Avancé',
-      description: 'Maîtrisez les figures avancées et le freestyle.',
-      level: 'advanced',
-      maxStudents: 3,
-      price: 250,
+      title: 'Cours Duo',
+      description: "Partagez l'expérience à deux. Attention personnalisée et progression en duo.",
+      level: 'beginner',
+      maxStudents: 2,
+      price: 95,
       isActive: 1,
       createdAt: Date.now(),
     },
@@ -100,11 +100,11 @@ export async function seedDatabase(): Promise<void> {
     // Matin 2: 11:30 - 14:00
     // Après-midi: 14:30 - 17:00
 
-    // Cours 1 - Introduction au Kitesurf
+    // Cours 1 - Cours Collectif (6 élèves max)
     {
       id: 1,
       courseId: 1,
-      date: '2026-03-15',
+      date: '2026-03-20',
       startTime: '08:30',
       endTime: '11:00',
       location: 'Plage de la Baule',
@@ -115,7 +115,7 @@ export async function seedDatabase(): Promise<void> {
     {
       id: 2,
       courseId: 1,
-      date: '2026-03-15',
+      date: '2026-03-20',
       startTime: '11:30',
       endTime: '14:00',
       location: 'Plage de la Baule',
@@ -126,7 +126,7 @@ export async function seedDatabase(): Promise<void> {
     {
       id: 3,
       courseId: 1,
-      date: '2026-03-15',
+      date: '2026-03-20',
       startTime: '14:30',
       endTime: '17:00',
       location: 'Plage de la Baule',
@@ -137,7 +137,7 @@ export async function seedDatabase(): Promise<void> {
     {
       id: 4,
       courseId: 1,
-      date: '2026-03-16',
+      date: '2026-03-21',
       startTime: '08:30',
       endTime: '11:00',
       location: 'Plage de la Baule',
@@ -148,7 +148,7 @@ export async function seedDatabase(): Promise<void> {
     {
       id: 5,
       courseId: 1,
-      date: '2026-03-16',
+      date: '2026-03-21',
       startTime: '14:30',
       endTime: '17:00',
       location: 'Plage de la Baule',
@@ -156,73 +156,106 @@ export async function seedDatabase(): Promise<void> {
       isActive: 1,
       createdAt: Date.now(),
     },
-
-    // Cours 2 - Perfectionnement Kitesurf
     {
       id: 6,
-      courseId: 2,
-      date: '2026-03-17',
+      courseId: 1,
+      date: '2026-03-22',
       startTime: '08:30',
       endTime: '11:00',
-      location: 'Spot de la Torche',
-      maxStudents: 4,
+      location: 'Plage de la Baule',
+      maxStudents: 6,
       isActive: 1,
       createdAt: Date.now(),
     },
+
+    // Cours 2 - Cours Particulier (1 élève max)
     {
       id: 7,
       courseId: 2,
-      date: '2026-03-17',
-      startTime: '11:30',
-      endTime: '14:00',
-      location: 'Spot de la Torche',
-      maxStudents: 4,
+      date: '2026-03-20',
+      startTime: '08:30',
+      endTime: '11:00',
+      location: 'Plage de la Baule',
+      maxStudents: 1,
       isActive: 1,
       createdAt: Date.now(),
     },
     {
       id: 8,
       courseId: 2,
-      date: '2026-03-17',
-      startTime: '14:30',
-      endTime: '17:00',
-      location: 'Spot de la Torche',
-      maxStudents: 4,
+      date: '2026-03-20',
+      startTime: '11:30',
+      endTime: '14:00',
+      location: 'Plage de la Baule',
+      maxStudents: 1,
       isActive: 1,
       createdAt: Date.now(),
     },
-
-    // Cours 3 - Kitesurf Avancé
     {
       id: 9,
-      courseId: 3,
-      date: '2026-03-18',
+      courseId: 2,
+      date: '2026-03-21',
       startTime: '08:30',
       endTime: '11:00',
-      location: 'Spot de la Torche',
-      maxStudents: 3,
+      location: 'Plage de la Baule',
+      maxStudents: 1,
       isActive: 1,
       createdAt: Date.now(),
     },
     {
       id: 10,
+      courseId: 2,
+      date: '2026-03-21',
+      startTime: '14:30',
+      endTime: '17:00',
+      location: 'Plage de la Baule',
+      maxStudents: 1,
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+
+    // Cours 3 - Cours Duo (2 élèves max)
+    {
+      id: 11,
       courseId: 3,
-      date: '2026-03-18',
-      startTime: '11:30',
-      endTime: '14:00',
-      location: 'Spot de la Torche',
-      maxStudents: 3,
+      date: '2026-03-20',
+      startTime: '08:30',
+      endTime: '11:00',
+      location: 'Plage de la Baule',
+      maxStudents: 2,
       isActive: 1,
       createdAt: Date.now(),
     },
     {
-      id: 11,
+      id: 12,
       courseId: 3,
-      date: '2026-03-18',
+      date: '2026-03-20',
+      startTime: '11:30',
+      endTime: '14:00',
+      location: 'Plage de la Baule',
+      maxStudents: 2,
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+    {
+      id: 13,
+      courseId: 3,
+      date: '2026-03-21',
+      startTime: '08:30',
+      endTime: '11:00',
+      location: 'Plage de la Baule',
+      maxStudents: 2,
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+    {
+      id: 14,
+      courseId: 3,
+      date: '2026-03-21',
       startTime: '14:30',
       endTime: '17:00',
-      location: 'Spot de la Torche',
-      maxStudents: 3,
+      location: 'Plage de la Baule',
+      maxStudents: 2,
       isActive: 1,
       createdAt: Date.now(),
     },
@@ -374,26 +407,30 @@ export async function seedDatabase(): Promise<void> {
 
   // ============================================
   // CourseCredits - Crédits de cours pour les étudiants
+  // Correspond aux packs de la page Courses
+  // Pack Découverte: 3 séances = 180€ (au lieu de 210€)
+  // Pack Progression: 6 séances = 330€ (au lieu de 420€)
+  // Pack Expert: 10 séances = 500€ (au lieu de 700€)
   // 1 séance = 2h30 de cours
   // ============================================
   const courseCredits: CourseCredit[] = [
     {
       id: 1,
       studentId: 3, // Alice
-      sessions: 4, // 10 heures = 4 séances (10 / 2.5 = 4)
+      sessions: 6, // Pack Progression
       usedSessions: 0,
       status: 'active',
-      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year from now
+      expiresAt: Date.now() + 60 * 24 * 60 * 60 * 1000, // 2 months from now
       createdAt: Date.now(),
       updatedAt: Date.now(),
     },
     {
       id: 2,
       studentId: 4, // Bob
-      sessions: 2, // 5 heures = 2 séances (5 / 2.5 = 2)
+      sessions: 3, // Pack Découverte
       usedSessions: 0,
       status: 'active',
-      expiresAt: Date.now() + 180 * 24 * 60 * 60 * 1000, // 6 months from now
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 1 month from now
       createdAt: Date.now(),
       updatedAt: Date.now(),
     },
