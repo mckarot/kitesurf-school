@@ -1,8 +1,13 @@
 // src/pages/ProfileData/index.tsx
 
-import { useLoaderData } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
+import { useUserDataExport } from '../../hooks/useUserDataExport';
+import { formatExportData } from '../../utils/exportUserData';
 import { Button } from '../../components/ui/Button';
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { DataSection } from './components/DataSection';
 import { IdentitySection } from './components/IdentitySection';
 import { PhysicalDataSection } from './components/PhysicalDataSection';
@@ -10,16 +15,58 @@ import { HealthDataSection } from './components/HealthDataSection';
 import { ProgressionSection } from './components/ProgressionSection';
 import { ReservationsSection } from './components/ReservationsSection';
 import { TransactionsSection } from './components/TransactionsSection';
-import { useUserDataExport } from '../../hooks/useUserDataExport';
-import { formatExportData } from '../../utils/exportUserData';
-import type { ProfileDataLoaderReturn } from './loader';
+import { db } from '../../db/db';
+import { Download, User, Activity, Heart, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 
 export function ProfileDataPage() {
-  const data = useLoaderData() as ProfileDataLoaderReturn;
-  const { user: authUser } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { isExporting, exportError, triggerExport } = useUserDataExport();
+  const navigate = useNavigate();
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Charger les données utilisateur
+  useEffect(() => {
+    async function loadData() {
+      if (!user) return;
+
+      try {
+        const [userData, physicalData, healthData, progression, reservations, transactions] = await Promise.all([
+          db.users.get(user.id),
+          db.userPhysicalData.where('userId').equals(user.id).first(),
+          db.userHealthData.where('userId').equals(user.id).first(),
+          db.userProgression.where('userId').equals(user.id).first(),
+          db.reservations.where('studentId').equals(user.id).toArray(),
+          db.transactions.where('userId').equals(user.id).toArray(),
+        ]);
+
+        setData({
+          user: userData,
+          physicalData,
+          healthData,
+          progression,
+          reservations,
+          transactions,
+        });
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadData();
+  }, [user]);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/login', { state: { from: '/profil/mes-donnees' } });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleExport = async () => {
+    if (!data) return;
     try {
       const exportData = formatExportData(data);
       await triggerExport(exportData);
@@ -28,169 +75,162 @@ export function ProfileDataPage() {
     }
   };
 
-  // Vérifier que l'utilisateur est connecté
-  if (!authUser) {
+  // Show loading while auth is being checked
+  if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Vous devez être connecté pour accéder à cette page</p>
-          <a href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-            Se connecter
-          </a>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 flex items-center justify-center">
+        <LoadingSpinner size="lg" color="blue" showLabel label="Chargement des données..." />
       </div>
     );
   }
 
+  // Redirect if not authorized
+  if (!user) {
+    return null;
+  }
+
+  const sections = [
+    {
+      title: 'Identité',
+      icon: User,
+      color: 'from-blue-500 to-cyan-400',
+      component: <IdentitySection user={data.user} />,
+    },
+    {
+      title: 'Données Physiques',
+      icon: Activity,
+      color: 'from-purple-500 to-pink-400',
+      component: <PhysicalDataSection data={data.physicalData} />,
+    },
+    {
+      title: 'Données de Santé',
+      icon: Heart,
+      color: 'from-red-500 to-rose-400',
+      component: <HealthDataSection data={data.healthData} />,
+    },
+    {
+      title: 'Progression Pédagogique',
+      icon: TrendingUp,
+      color: 'from-orange-500 to-yellow-400',
+      component: <ProgressionSection progression={data.progression} />,
+    },
+    {
+      title: 'Réservations',
+      icon: Calendar,
+      color: 'from-green-500 to-emerald-400',
+      component: <ReservationsSection reservations={data.reservations} />,
+    },
+    {
+      title: 'Transactions',
+      icon: DollarSign,
+      color: 'from-indigo-500 to-blue-400',
+      component: <TransactionsSection transactions={data.transactions} />,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100">
+      {/* Hero Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 text-white"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <a
-                href="/dashboard"
-                className="text-gray-600 hover:text-gray-900 transition-colors"
-                aria-label="Retour au tableau de bord"
+            <div>
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2, duration: 0.6 }}
+                className="flex items-center space-x-3 mb-3"
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </a>
-              <h1 className="text-xl font-bold text-gray-900">Mes Données Personnelles</h1>
+                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-4xl md:text-5xl font-bold">Mes Données Personnelles</h1>
+              </motion.div>
+              <motion.p
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="text-blue-100 text-lg"
+              >
+                Consultez et gérez toutes vos informations personnelles
+              </motion.p>
             </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+            >
+              <Button
+                variant="secondary"
+                onClick={handleExport}
+                isLoading={isExporting}
+                className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white border-white/30"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Télécharger (JSON)
+              </Button>
+            </motion.div>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* Export Button */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            Consultez et téléchargez toutes vos données personnelles stockées dans l'application.
-          </p>
-          <Button
-            variant="primary"
-            onClick={handleExport}
-            isLoading={isExporting}
-            aria-label="Télécharger mes données au format JSON"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Télécharger mes données (JSON)
-          </Button>
-        </div>
-
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-8">
         {/* Error Message */}
         {exportError && (
-          <div
-            role="alert"
-            className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4"
           >
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <Heart className="w-5 h-5 text-red-600" />
               <p className="text-sm text-red-800">{exportError.message}</p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Data Sections */}
         <div className="space-y-6">
-          {/* Section 1: Identité */}
-          <DataSection
-            title="Identité"
-            icon={
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            }
-          >
-            <IdentitySection user={data.user} />
-          </DataSection>
-
-          {/* Section 2: Données Physiques */}
-          <DataSection
-            title="Données Physiques"
-            icon={
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            }
-          >
-            <PhysicalDataSection data={data.physicalData} />
-          </DataSection>
-
-          {/* Section 3: Données de Santé */}
-          <DataSection
-            title="Données de Santé"
-            icon={
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            }
-          >
-            <HealthDataSection data={data.healthData} />
-          </DataSection>
-
-          {/* Section 4: Progression Pédagogique */}
-          <DataSection
-            title="Progression Pédagogique"
-            icon={
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            }
-          >
-            <ProgressionSection progression={data.progression} />
-          </DataSection>
-
-          {/* Section 5: Réservations */}
-          <DataSection
-            title="Réservations"
-            icon={
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            }
-          >
-            <ReservationsSection reservations={data.reservations} />
-          </DataSection>
-
-          {/* Section 6: Transactions */}
-          <DataSection
-            title="Transactions"
-            icon={
-              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-          >
-            <TransactionsSection transactions={data.transactions} />
-          </DataSection>
+          {sections.map((section, index) => (
+            <motion.div
+              key={section.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1, duration: 0.5 }}
+            >
+              <DataSection
+                title={section.title}
+                icon={<section.icon className="w-5 h-5 text-gray-500" />}
+              >
+                {section.component}
+              </DataSection>
+            </motion.div>
+          ))}
         </div>
 
         {/* Footer Info */}
-        <div className="mt-8 text-center text-xs text-gray-500">
-          <p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
+          className="mt-8 text-center text-xs text-gray-500 bg-white rounded-2xl p-6 shadow-lg"
+        >
+          <p className="mb-2">
             Conformément au RGPD, vous avez droit à l'accès, à la rectification et à la suppression de vos données.
           </p>
-          <p className="mt-1">
+          <p>
             Pour toute demande, contactez-nous à{' '}
-            <a href="mailto:privacy@kitesurf-school.com" className="text-blue-600 hover:underline">
-              privacy@kitesurf-school.com
+            <a href="mailto:privacy@kiteschool.com" className="text-blue-600 hover:underline">
+              privacy@kiteschool.com
             </a>
           </p>
-        </div>
+        </motion.div>
       </main>
     </div>
   );

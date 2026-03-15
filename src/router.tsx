@@ -176,10 +176,6 @@ export const router = createBrowserRouter([
   {
     path: '/profil/mes-donnees',
     element: <MainLayout requireAuth={true} />,
-    loader: async () => {
-      const userId = getCurrentUserId();
-      return profileDataLoader(userId);
-    },
     errorElement: <DbErrorBoundary><div /></DbErrorBoundary>,
     children: [
       { index: true, element: <ProfileDataPage /> },
