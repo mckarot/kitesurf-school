@@ -29,12 +29,77 @@ import { ConsentsPage } from './pages/Profile/ConsentsPage';
 import { EditProfilePage } from './pages/Profile/EditProfilePage';
 import { SchoolSchedulePage } from './pages/Admin/SchoolSchedule';
 
+// New public pages with Metalab design
+import { MainLayout } from './components/Layout/MainLayout';
+import { HomePage } from './pages/Home';
+import { AboutPage } from './pages/About';
+import { CoursesPage } from './pages/Courses';
+import { EquipmentPage } from './pages/Equipment';
+import { ContactPage } from './pages/Contact';
+import { RGPDPage } from './pages/RGPD';
+
+// Auth wrapper for public pages
+const PublicLayout = ({ children }: { children: React.ReactNode }) => {
+  return children;
+};
+
 export const router = createBrowserRouter([
+  // Public routes with new Metalab design
   {
     path: '/',
-    element: <Navigate to="/login" replace />,
+    element: <Navigate to="/home" replace />,
     errorElement: <ErrorBoundary><div /></ErrorBoundary>,
   },
+  {
+    path: '/home',
+    element: <MainLayout />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <HomePage /> },
+    ],
+  },
+  {
+    path: '/about',
+    element: <MainLayout />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <AboutPage /> },
+    ],
+  },
+  {
+    path: '/courses',
+    element: <MainLayout />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <CoursesPage /> },
+    ],
+  },
+  {
+    path: '/equipment',
+    element: <MainLayout />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <EquipmentPage /> },
+    ],
+  },
+  {
+    path: '/contact',
+    element: <MainLayout />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <ContactPage /> },
+    ],
+  },
+  {
+    path: '/rgpd',
+    element: <MainLayout />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <RGPDPage /> },
+    ],
+  },
+  
+  // Legacy routes (keep existing functionality)
   {
     path: '/login',
     element: <LoginPage />,
@@ -47,9 +112,12 @@ export const router = createBrowserRouter([
   },
   {
     path: '/student',
-    element: <StudentPage />,
+    element: <MainLayout requireAuth={true} allowedRoles={['student']} />,
     loader: studentLoader,
     errorElement: <DbErrorBoundary><StudentErrorBoundary><div /></StudentErrorBoundary></DbErrorBoundary>,
+    children: [
+      { index: true, element: <StudentPage /> },
+    ],
   },
   {
     path: '/admin',
@@ -90,8 +158,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/reservations',
-    element: <ReservationHistoryPage />,
+    element: <MainLayout requireAuth={true} allowedRoles={['student']} />,
     errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <ReservationHistoryPage /> },
+    ],
   },
   {
     path: '/admin/stats',
@@ -101,27 +172,39 @@ export const router = createBrowserRouter([
   // Profile routes
   {
     path: '/profil/mes-donnees',
-    element: <ProfileDataPage />,
+    element: <MainLayout requireAuth={true} />,
     loader: async () => {
       const userId = getCurrentUserId();
       return profileDataLoader(userId);
     },
     errorElement: <DbErrorBoundary><div /></DbErrorBoundary>,
+    children: [
+      { index: true, element: <ProfileDataPage /> },
+    ],
   },
   {
     path: '/profil/modifier',
-    element: <EditProfilePage />,
+    element: <MainLayout requireAuth={true} />,
     errorElement: <DbErrorBoundary><ProfileErrorBoundary><div /></ProfileErrorBoundary></DbErrorBoundary>,
+    children: [
+      { index: true, element: <EditProfilePage /> },
+    ],
   },
   {
     path: '/profil/consentements',
-    element: <ConsentsPage />,
+    element: <MainLayout requireAuth={true} />,
     errorElement: <DbErrorBoundary><ProfileErrorBoundary><div /></ProfileErrorBoundary></DbErrorBoundary>,
+    children: [
+      { index: true, element: <ConsentsPage /> },
+    ],
   },
   {
     path: '/profil/supprimer-compte',
-    element: <DeleteAccountPage />,
+    element: <MainLayout requireAuth={true} />,
     errorElement: <DbErrorBoundary><ProfileErrorBoundary><div /></ProfileErrorBoundary></DbErrorBoundary>,
+    children: [
+      { index: true, element: <DeleteAccountPage /> },
+    ],
   },
   {
     path: '/profil/confirmer-suppression/:token',
@@ -131,7 +214,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '*',
-    element: <Navigate to="/dashboard" replace />,
+    element: <Navigate to="/home" replace />,
     errorElement: <ErrorBoundary><div /></ErrorBoundary>,
   },
 ]);
