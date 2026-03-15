@@ -45,10 +45,27 @@ export function useReservationHistory(userId?: number): UseReservationHistoryRet
       const users = await db.users.toArray();
       const sessions = await db.courseSessions.toArray();
 
+      console.log('[useReservationHistory] Chargement:', {
+        reservations: reservations.length,
+        courses: courses.length,
+        users: users.length,
+        sessions: sessions.length,
+      });
+
       const historyItems: ReservationHistoryItem[] = reservations.map((reservation) => {
         const course = courses.find((c) => c.id === reservation.courseId);
         const student = users.find((u) => u.id === reservation.studentId);
-        const session = sessions.find((s) => s.courseId === reservation.courseId);
+        // Chercher la session par ID d'abord, puis par courseId
+        const session = sessions.find((s) => s.id === reservation.sessionId) 
+          || sessions.find((s) => s.courseId === reservation.courseId);
+
+        console.log('[useReservationHistory] Réservation:', {
+          id: reservation.id,
+          courseId: reservation.courseId,
+          sessionId: reservation.sessionId,
+          foundSession: !!session,
+          sessionDate: session?.date,
+        });
 
         return {
           id: reservation.id,
@@ -73,9 +90,12 @@ export function useReservationHistory(userId?: number): UseReservationHistoryRet
         ? historyItems.filter((item) => item.studentId === userId)
         : historyItems;
 
+      console.log('[useReservationHistory] Historique filtré:', filtered.length, 'réservations');
+
       setHistory(filtered);
       setFilteredHistory(filtered);
     } catch (err) {
+      console.error('[useReservationHistory] Erreur:', err);
       const errorObj = err instanceof Error ? err : new Error('Failed to load reservation history');
       setError(errorObj);
     } finally {

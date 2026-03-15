@@ -11,6 +11,9 @@ import { StatsSummary } from './StatsSummary';
 import { buildAllAdminCreditViews } from '../../../utils/buildAdminCreditView';
 import type { AdminCreditsLoaderData, AddCreditsFormInput } from '../../../types';
 import { Button } from '../../../components/ui/Button';
+import { PageTransition } from '../../../components/ui/PageTransition';
+import { StaggerContainer } from '../../../components/ui/StaggerContainer';
+import { AnimatedCard } from '../../../components/ui/AnimatedCard';
 
 /**
  * Page Admin - Gestion des Crédits
@@ -82,100 +85,108 @@ export function CreditsPage() {
 
   return (
     <CreditsErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <a
-                  href="/admin"
-                  className="text-gray-600 hover:text-gray-900 transition"
-                  aria-label="Retour au dashboard admin"
-                >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                </a>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Gérer les Crédits</h1>
-                  <p className="text-sm text-gray-600 mt-0.5">
-                    Ajouter et suivre les crédits de cours des élèves
-                  </p>
+      <PageTransition>
+        <div className="min-h-screen bg-gray-50">
+          {/* Header */}
+          <header className="bg-white border-b border-gray-200">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <a
+                    href="/admin"
+                    className="text-gray-600 hover:text-gray-900 transition"
+                    aria-label="Retour au dashboard admin"
+                  >
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </a>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">Gérer les Crédits</h1>
+                    <p className="text-sm text-gray-600 mt-0.5">
+                      Ajouter et suivre les crédits de cours des élèves
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <a
+                    href="/admin"
+                    className="text-sm font-medium text-gray-600 hover:text-gray-900 transition"
+                  >
+                    Retour à l'admin
+                  </a>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setSelectedStudentId(null);
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    Ajouter des crédits
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <a
-                  href="/admin"
-                  className="text-sm font-medium text-gray-600 hover:text-gray-900 transition"
-                >
-                  Retour à l'admin
-                </a>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setSelectedStudentId(null);
-                    setIsModalOpen(true);
-                  }}
-                >
-                  Ajouter des crédits
-                </Button>
-              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          {/* Résumé global des statistiques */}
-          <StatsSummary credits={credits} />
+          {/* Main Content */}
+          <main className="max-w-7xl mx-auto px-4 py-8">
+            {/* Résumé global des statistiques avec AnimatedCard */}
+            <AnimatedCard variant="elevated" className="mb-8">
+              <StatsSummary credits={credits} />
+            </AnimatedCard>
 
-          {/* Tableau des élèves */}
-          <section aria-labelledby="students-table-heading">
-            <h2 id="students-table-heading" className="text-lg font-semibold text-gray-900 mb-4">
-              Élèves inscrits
-            </h2>
-            <CreditsTable
-              students={adminCreditViews}
-              onAddCredits={handleOpenAddModal}
-              onViewHistory={handleViewHistory}
-            />
-          </section>
-
-          {/* Historique des crédits (si un élève est sélectionné) */}
-          {expandedHistoryId !== null && (
-            <section className="mt-8" aria-labelledby="history-heading">
-              <h2 id="history-heading" className="sr-only">
-                Historique des crédits
+            {/* Tableau des élèves avec StaggerContainer */}
+            <section aria-labelledby="students-table-heading">
+              <h2 id="students-table-heading" className="text-lg font-semibold text-gray-900 mb-4">
+                Élèves inscrits
               </h2>
-              <CreditHistory
-                studentId={expandedHistoryId}
-                studentName={
-                  adminCreditViews.find((s) => s.studentId === expandedHistoryId)
-                    ?.studentName || `Élève #${expandedHistoryId}`
-                }
-                credits={credits.filter((c) => c.studentId === expandedHistoryId)}
-                onClose={() => setExpandedHistoryId(null)}
-              />
+              <StaggerContainer staggerDelay={0.05}>
+                <CreditsTable
+                  students={adminCreditViews}
+                  onAddCredits={handleOpenAddModal}
+                  onViewHistory={handleViewHistory}
+                />
+              </StaggerContainer>
             </section>
-          )}
-        </main>
 
-        {/* Modal d'ajout de crédits */}
-        <AddCreditsModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleAddCredits}
-          students={students}
-          instructors={instructors}
-          initialStudentId={selectedStudentId || undefined}
-        />
-      </div>
+            {/* Historique des crédits (si un élève est sélectionné) */}
+            {expandedHistoryId !== null && (
+              <section className="mt-8" aria-labelledby="history-heading">
+                <h2 id="history-heading" className="sr-only">
+                  Historique des crédits
+                </h2>
+                <AnimatedCard variant="elevated">
+                  <CreditHistory
+                    studentId={expandedHistoryId}
+                    studentName={
+                      adminCreditViews.find((s) => s.studentId === expandedHistoryId)
+                        ?.studentName || `Élève #${expandedHistoryId}`
+                    }
+                    credits={credits.filter((c) => c.studentId === expandedHistoryId)}
+                    onClose={() => setExpandedHistoryId(null)}
+                  />
+                </AnimatedCard>
+              </section>
+            )}
+          </main>
+
+          {/* Modal d'ajout de crédits */}
+          <AddCreditsModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSubmit={handleAddCredits}
+            students={students}
+            instructors={instructors}
+            initialStudentId={selectedStudentId || undefined}
+          />
+        </div>
+      </PageTransition>
     </CreditsErrorBoundary>
   );
 }

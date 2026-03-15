@@ -1,6 +1,6 @@
 // src/pages/ReservationHistory/index.tsx
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReservationHistory } from '../../hooks/useReservationHistory';
 import { ReservationFilters } from '../../components/ReservationHistory/ReservationFilters';
@@ -9,7 +9,9 @@ import { markReservationAsCompleted } from '../../utils/reservationUtils';
 import { Navigate } from 'react-router-dom';
 
 export function ReservationHistoryPage() {
+  // TOUS LES HOOKS EN PREMIER - AVANT TOUT RETURN
   const { user, isLoading: authLoading } = useAuth();
+  const [showCompleted, setShowCompleted] = useState(true);
   const {
     filteredHistory,
     isLoading,
@@ -18,9 +20,8 @@ export function ReservationHistoryPage() {
     clearFilters,
     loadHistory,
   } = useReservationHistory(user?.role === 'student' ? user.id : undefined);
-  
-  const [showCompleted, setShowCompleted] = useState(true);
 
+  // RETURNS CONDITIONNELS APRÈS TOUS LES HOOKS
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -36,26 +37,28 @@ export function ReservationHistoryPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // CALCULS APRÈS LES HOOKS
   const isStudent = user.role === 'student';
   const isAdmin = user.role === 'admin';
   const isInstructor = user.role === 'instructor';
   const canComplete = isAdmin || isInstructor;
 
-  // Filter out completed if toggle is off
   const displayedHistory = showCompleted
     ? filteredHistory
     : filteredHistory.filter((r) => r.status !== 'completed');
 
-  const handleMarkCompleted = useCallback(async (reservationId: number) => {
+  // FONCTION SIMPLE (PAS DE USECALLBACK)
+  const handleMarkCompleted = async (reservationId: number) => {
     try {
       await markReservationAsCompleted(reservationId);
-      await loadHistory(); // Reload to show updated status
+      await loadHistory();
     } catch (err) {
       console.error('Failed to mark reservation as completed:', err);
       alert('Échec de la mise à jour. Veuillez réessayer.');
     }
-  }, [loadHistory]);
+  };
 
+  // RENDER
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
