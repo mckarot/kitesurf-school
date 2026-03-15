@@ -1,8 +1,11 @@
 // src/pages/Dashboard/index.tsx
+// Tableau de bord utilisateur avec carte de réservations en attente pour admin
 
 import { useAuth } from '../../hooks/useAuth';
 import { useCourses } from '../../hooks/useCourses';
 import { useReservations } from '../../hooks/useReservations';
+import { db } from '../../db/db';
+import { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody, CardHeader } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -15,6 +18,19 @@ export function DashboardPage() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const { courses } = useCourses();
   const { reservations } = useReservations();
+  const [pendingReservationsCount, setPendingReservationsCount] = useState(0);
+
+  // Charger le nombre de réservations en attente (admin seulement)
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      db.reservations
+        .where('status')
+        .equals('pending')
+        .count()
+        .then(count => setPendingReservationsCount(count))
+        .catch(err => console.error('Error counting pending reservations:', err));
+    }
+  }, [user?.role]);
 
   if (authLoading) {
     return (
@@ -198,6 +214,30 @@ export function DashboardPage() {
                       <div>
                         <h3 className="font-medium text-gray-900">Gestion des cours</h3>
                         <p className="text-sm text-gray-500">Créer et modifier les cours</p>
+                      </div>
+                    </CardBody>
+                  </AnimatedCard>
+                </a>
+                <a href="/admin/reservations-validation" className="block">
+                  <AnimatedCard variant="elevated" className="hover:shadow-md transition cursor-pointer">
+                    <CardBody className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center relative">
+                        <svg className="w-6 h-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        {pendingReservationsCount > 0 && (
+                          <span className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                            {pendingReservationsCount > 9 ? '9+' : pendingReservationsCount}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900">Réservations en attente</h3>
+                        <p className="text-sm text-gray-500">
+                          {pendingReservationsCount > 0
+                            ? `${pendingReservationsCount} à valider`
+                            : 'Aucune en attente'}
+                        </p>
                       </div>
                     </CardBody>
                   </AnimatedCard>

@@ -98,7 +98,9 @@ export interface Reservation {
   studentId: number;
   courseId: number;
   sessionId?: number;
+  instructorId?: number | null; // Moniteur assigné (null si pas encore assigné)
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  sessionsConsumed?: number; // Nombre de séances consommées pour cette réservation
   createdAt: number;
 }
 
@@ -493,4 +495,19 @@ export interface CreateReservationWithCreditResult {
   error?: string;
   reservationId?: number;
   remainingBalance?: StudentBalance;
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+export interface Notification {
+  id?: number; // Optionnel car auto-généré par Dexie
+  userId: number;
+  type: 'reservation_pending' | 'reservation_confirmed' | 'reservation_cancelled' | 'reservation_completed' | 'credit_added' | 'general';
+  title: string;
+  message: string;
+  read: 0 | 1;
+  reservationId?: number;
+  createdAt: number;
 }

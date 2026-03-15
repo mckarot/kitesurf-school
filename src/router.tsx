@@ -1,4 +1,6 @@
 // src/router.tsx
+// Configuration des routes React Router v6.4+
+// Ajout de la route /notifications avec loader
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { LoginPage } from './pages/Login';
@@ -28,6 +30,7 @@ import { ConfirmDeletionPage, confirmDeletionLoader } from './pages/Profile/Conf
 import { ConsentsPage } from './pages/Profile/ConsentsPage';
 import { EditProfilePage } from './pages/Profile/EditProfilePage';
 import { SchoolSchedulePage } from './pages/Admin/SchoolSchedule';
+import { AdminReservationsValidationPage } from './pages/Admin/ReservationsValidation';
 
 // New public pages with Metalab design
 import { MainLayout } from './components/Layout/MainLayout';
@@ -37,6 +40,9 @@ import { CoursesPage } from './pages/Courses';
 import { EquipmentPage } from './pages/Equipment';
 import { ContactPage } from './pages/Contact';
 import { RGPDPage } from './pages/RGPD';
+
+// Notifications page with loader
+import { NotificationsPage, notificationsLoader } from './pages/Notifications';
 
 // Auth wrapper for public pages
 const PublicLayout = ({ children }: { children: React.ReactNode }) => {
@@ -98,7 +104,21 @@ export const router = createBrowserRouter([
       { index: true, element: <RGPDPage /> },
     ],
   },
-  
+
+  // Notifications page (authenticated users only)
+  {
+    path: '/notifications',
+    element: <MainLayout requireAuth={true} />,
+    errorElement: <DbErrorBoundary><div /></DbErrorBoundary>,
+    children: [
+      {
+        index: true,
+        element: <NotificationsPage />,
+        loader: notificationsLoader,
+      },
+    ],
+  },
+
   // Legacy routes (keep existing functionality)
   {
     path: '/login',
@@ -115,8 +135,8 @@ export const router = createBrowserRouter([
     element: <MainLayout requireAuth={true} allowedRoles={['student']} />,
     errorElement: <DbErrorBoundary><StudentErrorBoundary><div /></StudentErrorBoundary></DbErrorBoundary>,
     children: [
-      { 
-        index: true, 
+      {
+        index: true,
         element: <StudentPage />,
         errorElement: <StudentErrorBoundary><div /></StudentErrorBoundary>,
       },
@@ -137,6 +157,14 @@ export const router = createBrowserRouter([
     path: '/admin/school-schedule',
     element: <SchoolSchedulePage />,
     errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+  },
+  {
+    path: '/admin/reservations-validation',
+    element: <MainLayout requireAuth={true} allowedRoles={['admin']} />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    children: [
+      { index: true, element: <AdminReservationsValidationPage /> },
+    ],
   },
   {
     path: '/instructor',

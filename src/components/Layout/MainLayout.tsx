@@ -1,7 +1,10 @@
 // src/components/Layout/MainLayout.tsx
+// Layout principal avec navigation et notifications
+// Ajout de la cloche de notifications avec dropdown
+
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Menu,
   X,
@@ -14,8 +17,17 @@ import {
   Shield,
   LogOut,
   User,
+  Bell,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  CheckCircle2,
+  Gift,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifications } from '../../hooks/useNotifications';
+import type { Notification } from '../../types';
 
 interface MainLayoutProps {
   requireAuth?: boolean;
@@ -31,13 +43,62 @@ const navItems = [
   { path: '/contact', label: 'Contact', icon: Phone },
 ];
 
+// Icônes par type de notification
+const notificationIcons: Record<Notification['type'], React.ReactNode> = {
+  reservation_pending: <AlertCircle className="w-4 h-4" />,
+  reservation_confirmed: <CheckCircle2 className="w-4 h-4" />,
+  reservation_cancelled: <XCircle className="w-4 h-4" />,
+  reservation_completed: <CheckCircle className="w-4 h-4" />,
+  credit_added: <Gift className="w-4 h-4" />,
+  general: <Info className="w-4 h-4" />,
+};
+
+const notificationColors: Record<Notification['type'], string> = {
+  reservation_pending: 'bg-yellow-500',
+  reservation_confirmed: 'bg-green-500',
+  reservation_cancelled: 'bg-red-500',
+  reservation_completed: 'bg-blue-500',
+  credit_added: 'bg-purple-500',
+  general: 'bg-gray-500',
+};
+
 export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
+  const [pendingReservationsCount, setPendingReservationsCount] = useState(0);
+
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Hook notifications - seulement pour les utilisateurs connectés
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    isLoading: notificationsLoading,
+  } = useNotifications(user?.id ?? null, false);
+
+  // Récupérer les 5 dernières notifications pour le dropdown
+  const recentNotifications = notifications.slice(0, 5);
+
+  // Charger le nombre de réservations en attente (admin seulement)
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      // Import dynamique pour éviter les cycles de dépendance
+      import('../../db/db').then(({ db }) => {
+        db.reservations
+          .where('status')
+          .equals('pending')
+          .count()
+          .then(count => setPendingReservationsCount(count))
+          .catch(err => console.error('Error counting pending reservations:', err));
+      }).catch(err => console.error('Error importing db:', err));
+    }
+  }, [user?.role]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -50,6 +111,18 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
+
+  // Fermer le dropdown notifications quand on clique ailleurs
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsNotificationDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Redirect to login if auth required and user not connected
   useEffect(() => {
@@ -64,6 +137,14 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
   const handleLogout = () => {
     logout();
     navigate('/home');
+  };
+
+  const handleNotificationClick = async (notificationId: number) => {
+    // Marquer comme lu
+    await markAsRead(notificationId);
+    // Naviguer vers la page des notifications
+    navigate('/notifications');
+    setIsNotificationDropdownOpen(false);
   };
 
   return (
@@ -120,18 +201,196 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
             <div className="hidden lg:flex items-center space-x-4">
               {user && (
                 <div className="flex items-center space-x-4">
-                  <Link
-                    to="/reservations"
-                    className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
-                  >
-                    Historique
-                  </Link>
+                  {/* Admin - Dashboard instead of History */}
+                  {user.role === 'admin' && (
+                    <>
+                      <Link
+                        to="/admin"
+                        className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                      >
+                        Admin Dashboard
+                      </Link>
+                      <Link
+                        to="/admin/credits"
+                        className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                      >
+                        Crédits
+                      </Link>
+                      <Link
+                        to="/admin/reservations-validation"
+                        className="text-sm text-gray-600 hover:text-blue-600 transition-colors flex items-center space-x-1 relative"
+                      >
+                        <span>Réservations</span>
+                        {pendingReservationsCount > 0 && (
+                          <span className="absolute -top-2 -right-3 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                            {pendingReservationsCount > 9 ? '9+' : pendingReservationsCount}
+                          </span>
+                        )}
+                      </Link>
+                    </>
+                  )}
+
+                  {/* Instructor - Calendar */}
+                  {user.role === 'instructor' && (
+                    <Link
+                      to="/instructor"
+                      className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Moniteur
+                    </Link>
+                  )}
+
+                  {/* Student - History */}
+                  {user.role === 'student' && (
+                    <Link
+                      to="/reservations"
+                      className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
+                    >
+                      Historique
+                    </Link>
+                  )}
+
+                  {/* Notification Bell */}
+                  <div className="relative" ref={dropdownRef}>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setIsNotificationDropdownOpen(!isNotificationDropdownOpen)}
+                      className="relative p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                      aria-label="Notifications"
+                      aria-expanded={isNotificationDropdownOpen}
+                    >
+                      <Bell className="w-6 h-6" />
+                      {unreadCount > 0 && (
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                        >
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </motion.span>
+                      )}
+                    </motion.button>
+
+                    {/* Notification Dropdown */}
+                    <AnimatePresence>
+                      {isNotificationDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                        >
+                          {/* Header */}
+                          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-white font-bold text-lg">Notifications</h3>
+                              <Link
+                                to="/notifications"
+                                className="text-blue-100 text-sm hover:text-white transition-colors"
+                                onClick={() => setIsNotificationDropdownOpen(false)}
+                              >
+                                Voir tout
+                              </Link>
+                            </div>
+                            {unreadCount > 0 && (
+                              <p className="text-blue-100 text-sm mt-1">
+                                {unreadCount} non lue{unreadCount > 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Notification List */}
+                          <div className="max-h-96 overflow-y-auto">
+                            {notificationsLoading ? (
+                              <div className="px-6 py-8 text-center text-gray-500">
+                                Chargement...
+                              </div>
+                            ) : recentNotifications.length === 0 ? (
+                              <div className="px-6 py-8 text-center text-gray-500">
+                                <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                                <p className="text-sm">Aucune notification</p>
+                              </div>
+                            ) : (
+                              <div className="py-2">
+                                {recentNotifications.map((notification) => (
+                                  <button
+                                    key={notification.id}
+                                    onClick={() =>
+                                      notification.id && handleNotificationClick(notification.id)
+                                    }
+                                    className={`w-full px-6 py-4 flex items-start space-x-3 hover:bg-gray-50 transition-colors ${
+                                      notification.read === 0 ? 'bg-blue-50' : ''
+                                    }`}
+                                  >
+                                    {/* Icon */}
+                                    <div
+                                      className={`w-10 h-10 rounded-xl ${notificationColors[notification.type]} flex items-center justify-center text-white flex-shrink-0`}
+                                    >
+                                      {notificationIcons[notification.type]}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="flex-1 text-left">
+                                      <div className="flex items-center justify-between">
+                                        <h4
+                                          className={`font-semibold text-sm ${
+                                            notification.read === 0
+                                              ? 'text-gray-900'
+                                              : 'text-gray-600'
+                                          }`}
+                                        >
+                                          {notification.title}
+                                        </h4>
+                                        {notification.read === 0 && (
+                                          <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                        {notification.message}
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-2">
+                                        {new Date(notification.createdAt).toLocaleDateString(
+                                          'fr-FR',
+                                          {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          }
+                                        )}
+                                      </p>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Footer */}
+                          <div className="border-t border-gray-100 px-6 py-3 bg-gray-50">
+                            <Link
+                              to="/notifications"
+                              className="text-center text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors block"
+                              onClick={() => setIsNotificationDropdownOpen(false)}
+                            >
+                              Voir toutes les notifications
+                            </Link>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
                   <Link
                     to="/profil/mes-donnees"
                     className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     <User className="w-4 h-4" />
-                    <span className="text-sm font-medium">{user.firstName} {user.lastName}</span>
+                    <span className="text-sm font-medium">
+                      {user.firstName} {user.lastName}
+                    </span>
                   </Link>
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -199,13 +458,75 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
               {user && (
                 <>
                   <div className="border-t border-gray-200 my-4" />
+
+                  {/* Notifications for mobile */}
                   <Link
-                    to="/reservations"
-                    className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    to="/notifications"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg relative"
                   >
-                    <Calendar className="w-5 h-5" />
-                    <span className="font-medium">Historique</span>
+                    <Bell className="w-5 h-5" />
+                    <span className="font-medium">Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="absolute right-4 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
+
+                  {/* Admin Links */}
+                  {user.role === 'admin' && (
+                    <>
+                      <Link
+                        to="/admin"
+                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      >
+                        <Shield className="w-5 h-5" />
+                        <span className="font-medium">Admin Dashboard</span>
+                      </Link>
+                      <Link
+                        to="/admin/credits"
+                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+                      >
+                        <Calendar className="w-5 h-5" />
+                        <span className="font-medium">Crédits</span>
+                      </Link>
+                      <Link
+                        to="/admin/reservations-validation"
+                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg relative"
+                      >
+                        <Clock className="w-5 h-5" />
+                        <span className="font-medium">Réservations</span>
+                        {pendingReservationsCount > 0 && (
+                          <span className="absolute right-4 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                            {pendingReservationsCount > 9 ? '9+' : pendingReservationsCount}
+                          </span>
+                        )}
+                      </Link>
+                    </>
+                  )}
+
+                  {/* Instructor Links */}
+                  {user.role === 'instructor' && (
+                    <Link
+                      to="/instructor"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    >
+                      <Calendar className="w-5 h-5" />
+                      <span className="font-medium">Moniteur</span>
+                    </Link>
+                  )}
+
+                  {/* Student Links */}
+                  {user.role === 'student' && (
+                    <Link
+                      to="/reservations"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
+                    >
+                      <Calendar className="w-5 h-5" />
+                      <span className="font-medium">Historique</span>
+                    </Link>
+                  )}
+
                   <Link
                     to="/profil/mes-donnees"
                     className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
@@ -318,37 +639,23 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
                     CGV
                   </Link>
                 </li>
-                <li>
-                  <Link to="/confidentialite" className="text-gray-400 hover:text-white transition-colors">
-                    Confidentialité
-                  </Link>
-                </li>
               </ul>
             </div>
 
             {/* Contact */}
             <div>
               <h3 className="text-lg font-semibold mb-4">Contact</h3>
-              <ul className="space-y-3 text-gray-400 text-sm">
-                <li className="flex items-start space-x-3">
-                  <Phone className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <span>+33 6 00 00 00 00</span>
-                </li>
-                <li>
-                  <a href="mailto:contact@kiteschool.fr" className="hover:text-white transition-colors">
-                    contact@kiteschool.fr
-                  </a>
-                </li>
-                <li>
-                  <p>Plage de la Côte d'Azur</p>
-                  <p>06000 Nice, France</p>
-                </li>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>Plage de la Baule</li>
+                <li>Loire-Atlantique, France</li>
+                <li>+33 6 12 34 56 78</li>
+                <li>contact@kiteschool.fr</li>
               </ul>
             </div>
           </div>
 
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400 text-sm">
-            <p>© {new Date().getFullYear()} KiteSchool. Tous droits réservés.</p>
+            <p>&copy; {new Date().getFullYear()} KiteSchool. Tous droits réservés.</p>
           </div>
         </div>
       </footer>

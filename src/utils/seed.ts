@@ -1,7 +1,9 @@
 // src/utils/seed.ts
+// Initialisation de la base de données avec des données de test
+// Ajout de réservations pending et notifications pour tester la validation
 
 import { db } from '../db/db';
-import type { User, Course, Reservation, CourseSession, TimeSlot, UserConsent, CourseCredit, SchoolSchedule } from '../types';
+import type { User, Course, Reservation, CourseSession, TimeSlot, UserConsent, CourseCredit, SchoolSchedule, Notification } from '../types';
 
 export async function seedDatabase(): Promise<void> {
   const userCount = await db.users.count();
@@ -269,6 +271,23 @@ export async function seedDatabase(): Promise<void> {
       status: 'confirmed',
       createdAt: Date.now(),
     },
+    // Réservations en attente pour tester la page de validation
+    {
+      id: 2,
+      studentId: 3, // Alice
+      courseId: 1, // Cours Collectif
+      sessionId: 1, // Session du 2026-03-20 08:30-11:00
+      status: 'pending',
+      createdAt: Date.now() - 2 * 60 * 60 * 1000, // Il y a 2 heures
+    },
+    {
+      id: 3,
+      studentId: 4, // Bob
+      courseId: 2, // Cours Particulier
+      sessionId: 7, // Session du 2026-03-20 08:30-11:00
+      status: 'pending',
+      createdAt: Date.now() - 30 * 60 * 1000, // Il y a 30 minutes
+    },
   ];
 
   // TimeSlots for instructor (id: 2) - including past and future dates
@@ -497,6 +516,41 @@ export async function seedDatabase(): Promise<void> {
     },
   ];
 
+  // ============================================
+  // Notifications - Notifications de test
+  // ============================================
+  const notifications: Notification[] = [
+    {
+      id: 1,
+      userId: 3, // Alice
+      type: 'reservation_pending',
+      title: 'Réservation en attente',
+      message: 'Votre réservation pour "Cours Collectif" est en attente de confirmation.',
+      read: 0,
+      reservationId: 2,
+      createdAt: Date.now() - 2 * 60 * 60 * 1000,
+    },
+    {
+      id: 2,
+      userId: 4, // Bob
+      type: 'reservation_pending',
+      title: 'Réservation en attente',
+      message: 'Votre réservation pour "Cours Particulier" est en attente de confirmation.',
+      read: 0,
+      reservationId: 3,
+      createdAt: Date.now() - 30 * 60 * 1000,
+    },
+    {
+      id: 3,
+      userId: 3, // Alice
+      type: 'credit_added',
+      title: 'Crédits ajoutés',
+      message: '6 séances ont été ajoutées à votre compte (Pack Progression).',
+      read: 1,
+      createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000, // Il y a 60 jours
+    },
+  ];
+
   await db.users.bulkAdd(users);
   await db.courses.bulkAdd(courses);
   await db.courseSessions.bulkAdd(courseSessions);
@@ -505,7 +559,10 @@ export async function seedDatabase(): Promise<void> {
   await db.schoolSchedule.bulkAdd(schoolSchedules);
   await db.courseCredits.bulkAdd(courseCredits);
   await db.userConsents.bulkAdd(userConsents);
+  await db.notifications.bulkAdd(notifications);
 
   console.log('Database seeded successfully!');
   console.log(`Initialized ${schoolSchedules.length} default school schedules`);
+  console.log(`Created ${notifications.length} test notifications`);
+  console.log(`Created ${reservations.filter(r => r.status === 'pending').length} pending reservations for testing`);
 }

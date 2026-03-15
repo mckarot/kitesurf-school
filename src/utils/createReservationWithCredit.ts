@@ -3,6 +3,7 @@
 import { db } from '../db/db';
 import type { CourseCredit, CreateReservationWithCreditResult, StudentBalance } from '../types';
 import { calculateBalance } from './calculateBalance';
+import { notifyReservationPending } from './notifications';
 
 /**
  * Crée une réservation en consommant des séances de crédit.
@@ -98,19 +99,17 @@ export async function createReservationWithCredit(
         sessionsRemainingToConsume -= sessionsToTakeFromThisCredit;
       }
 
-      // Étape 5: Créer la réservation
-      // Note: courseId est déduit de courseSessionId via une jointure si nécessaire
-      // Pour cette implémentation, on utilise courseSessionId comme courseId
-      // (à adapter selon la structure réelle des données)
+      // Étape 5: Créer la réservation avec statut 'pending'
+      // L'admin devra confirmer et assigner un moniteur
       const reservationId = await db.reservations.add({
         studentId,
-        courseId: courseSessionId, // À adapter: récupérer le vrai courseId depuis courseSessions
+        courseId: courseSessionId,
         courseSessionId: courseSessionId,
-        instructorId: null,
-        status: 'confirmed',
+        instructorId: null, // Sera assigné par l'admin
+        status: 'pending', // En attente de confirmation admin
         sessionsConsumed: sessionsToConsume,
         createdAt: Date.now(),
-      } as any); // Dexie ajoute l'id automatiquement
+      } as any);
 
       // Étape 6: Recalculer le nouveau solde après consommation
       // Relecture des crédits mis à jour dans la transaction
@@ -120,6 +119,30 @@ export async function createReservationWithCredit(
         .sortBy('createdAt');
 
       const newBalance = calculateBalance(updatedCredits);
+
+      // Étape 7: Créer une notification pour l'élève
+      // (en dehors de la transaction car les notifications ne sont pas critiques)
+      try {
+        const session = await db.courseSessions.get(courseSessionId);
+        const course = await db.courses.get(courseSessionId);
+        
+        if (session && course) {
+          await notifyReservationPending(
+            studentId,
+            reservationId,
+            course.title,
+            new Date(session.date).toLocaleDateString('fr-FR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })
+          );
+        }
+      } catch (notifError) {
+        console.error('[createReservationWithCredit] Notification error:', notifError);
+        // On ne bloque pas le succès de la réservation si la notification échoue
+      }
 
       // Succès: retour du résultat avec le nouveau solde
       return {

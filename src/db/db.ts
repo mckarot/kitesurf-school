@@ -16,7 +16,8 @@ import type {
   DeletionRequest,
   UserConsent,
   SchoolSchedule,
-  InstructorAvailability
+  InstructorAvailability,
+  Notification
 } from '../types';
 import { configureV5Migration } from './migrations/v5';
 import { configureV6Migration } from './migrations/v6';
@@ -40,6 +41,7 @@ export class KiteSurfDB extends Dexie {
   userConsents!: Table<UserConsent, number>;
   schoolSchedule!: Table<SchoolSchedule, number>;
   instructorAvailability!: Table<InstructorAvailability, number>;
+  notifications!: Table<Notification, number>;
 
   constructor() {
     super('KiteSurfSchoolDB');
@@ -141,6 +143,27 @@ export class KiteSurfDB extends Dexie {
     // Version 10: Add composite index on courseSessions for efficient date/time queries
     // - [courseId+date+startTime]: Required by useAvailableSessions hook for fast lookups
     configureV10Migration(this);
+
+    // Version 11: Add notifications table for admin notifications to students
+    // Index justification:
+    // - ++id: Primary key auto-increment
+    // - userId: Optimizes getUserNotifications(userId) queries - O(log n)
+    // - [userId+read]: Optimizes filtering unread notifications for a user
+    // - type: Optimizes filtering by notification type
+    // - createdAt: Optimizes sorting notifications by date
+    this.version(11).stores({
+      users: '++id, email, role, isActive, createdAt',
+      courses: '++id, instructorId, level, isActive, createdAt',
+      reservations: '++id, studentId, courseId, status, createdAt',
+      courseSessions: '++id, courseId, isActive, createdAt',
+      timeSlots: '++id, instructorId, date, isAvailable, createdAt',
+      userPhysicalData: '++id, userId',
+      userHealthData: '++id, userId',
+      userProgression: '++id, userId',
+      transactions: '++id, userId, reservationId, status, createdAt',
+      courseCredits: '++id, studentId, [studentId+status], status, createdAt',
+      notifications: '++id, userId, [userId+read], type, createdAt',
+    });
   }
 }
 
