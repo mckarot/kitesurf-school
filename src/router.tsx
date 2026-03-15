@@ -113,10 +113,13 @@ export const router = createBrowserRouter([
   {
     path: '/student',
     element: <MainLayout requireAuth={true} allowedRoles={['student']} />,
-    loader: studentLoader,
     errorElement: <DbErrorBoundary><StudentErrorBoundary><div /></StudentErrorBoundary></DbErrorBoundary>,
     children: [
-      { index: true, element: <StudentPage /> },
+      { 
+        index: true, 
+        element: <StudentPage />,
+        errorElement: <StudentErrorBoundary><div /></StudentErrorBoundary>,
+      },
     ],
   },
   {

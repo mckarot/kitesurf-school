@@ -1,8 +1,10 @@
 // src/pages/Student/index.tsx
 
-import { useState } from 'react';
-import { useLoaderData, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../hooks/useAuth';
+import { useCourses } from '../../hooks/useCourses';
 import { useReservations } from '../../hooks/useReservations';
 import { useStudentBalance } from '../../hooks/useStudentBalance';
 import { createReservationWithCredit } from '../../utils/createReservationWithCredit';
@@ -14,7 +16,6 @@ import { BookCourseModal } from './BookCourseModal';
 import { StudentErrorBoundary } from './StudentErrorBoundary';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import type { CourseSession } from '../../types';
-import type { StudentLoaderData } from './loader';
 import { Calendar, Users, DollarSign, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 /**
@@ -22,8 +23,8 @@ import { Calendar, Users, DollarSign, CheckCircle, XCircle, AlertCircle } from '
  * Design Metalab harmonisé avec le reste du site
  */
 export function StudentPage() {
-  const { user } = useLoaderData() as { user: any };
-  const { courses, reservations: loaderReservations } = useLoaderData() as StudentLoaderData;
+  const { user, isLoading: authLoading } = useAuth();
+  const { courses, isLoading: coursesLoading } = useCourses();
   const { createReservation, reservations, isLoading: reservationLoading } = useReservations();
   const { balance, refreshBalance } = useStudentBalance();
   const navigate = useNavigate();
@@ -31,6 +32,13 @@ export function StudentPage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<{ id: number; title: string; price: number } | null>(null);
   const [sessionsRequired] = useState<number>(1);
+
+  // Redirect if not authenticated or not a student
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== 'student')) {
+      navigate('/dashboard');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleReserveClick = (course: { id: number; title: string; price: number }) => {
     setSelectedCourse(course);
@@ -54,12 +62,26 @@ export function StudentPage() {
 
   const isReserved = (courseId: number): boolean => {
     return reservations.some(
-      (r) => r.courseId === courseId && r.studentId === user.id && r.status !== 'cancelled'
+      (r) => r.courseId === courseId && r.studentId === user?.id && r.status !== 'cancelled'
     );
   };
 
   const activeCourses = courses.filter((c) => c.isActive === 1);
   const hasSufficientBalance = (balance?.remainingSessions || 0) >= sessionsRequired;
+
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 flex items-center justify-center">
+        <LoadingSpinner size="lg" color="blue" showLabel label="Chargement..." />
+      </div>
+    );
+  }
+
+  // Redirect if not authorized
+  if (!user || user.role !== 'student') {
+    return null;
+  }
 
   return (
     <StudentErrorBoundary>
