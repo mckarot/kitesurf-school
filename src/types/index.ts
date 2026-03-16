@@ -183,16 +183,20 @@ export interface UserTransaction {
  *
  * Utilise 'sessions' et 'usedSessions' pour le système de crédits
  * 1 séance = 2h30 de cours
+ * 
+ * DEPRÉCIÉ (v13) : Remplacé par le système de wallet en euros.
+ * Les crédits existants sont marqués comme 'legacy' pour historique.
  */
 export interface CourseCredit {
   id: number;
   studentId: number;
   sessions: number;
   usedSessions: number;
-  status: 'active' | 'expired' | 'refunded';
+  status: 'active' | 'expired' | 'refunded' | 'legacy'; // AJOUT: 'legacy' en v13
   expiresAt?: number;
   createdAt: number;
   updatedAt: number;
+  isLegacy?: 0 | 1; // AJOUT v13: marque les anciens crédits
 }
 
 export interface StudentBalance {
@@ -200,6 +204,90 @@ export interface StudentBalance {
   usedSessions: number;
   remainingSessions: number;
 }
+
+// ============================================
+// EUROS SYSTEM (V13)
+// ============================================
+
+/**
+ * UserWallet - Portefeuille électronique en euros pour chaque utilisateur
+ * 
+ * Remplace le système de crédits (v13).
+ * Permet de stocker un solde en euros et de réserver des cours directement.
+ */
+export interface UserWallet {
+  id: number;
+  userId: number;
+  balance: number; // Solde en euros (ex: 150.50)
+  createdAt: number;
+  updatedAt?: number;
+}
+
+/**
+ * CoursePricing - Tarif des cours géré dynamiquement par l'admin
+ * 
+ * Permet de modifier les prix affichés sur /courses sans modifier le code.
+ * L'admin peut activer/désactiver des tarifs et modifier les prix.
+ */
+export interface CoursePricing {
+  id: number;
+  courseType: 'collectif' | 'particulier' | 'duo' | 'pack_3' | 'pack_6' | 'pack_10';
+  price: number; // Prix en euros
+  duration: string; // "2h30"
+  maxStudents: number;
+  sessions?: number; // Nombre de séances pour les packs (3, 6, 10)
+  description?: string;
+  isActive: 0 | 1;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+/**
+ * WalletTransaction - Historique des transactions sur le wallet
+ * 
+ * Trace tous les mouvements d'argent (ajouts, réservations, remboursements).
+ * Requis pour l'audit et la conformité RGPD.
+ */
+export interface WalletTransaction {
+  id: number;
+  userId: number;
+  amount: number; // Positif = crédit, Négatif = débit
+  type: 'deposit' | 'reservation' | 'refund' | 'admin_adjustment';
+  description: string;
+  reservationId?: number;
+  createdAt: number;
+}
+
+export interface AddFundsInput {
+  userId: number;
+  amount: number;
+  description: string;
+}
+
+export interface DeductFundsInput {
+  userId: number;
+  amount: number;
+  description: string;
+  reservationId?: number;
+}
+
+export interface WalletBalance {
+  userId: number;
+  balance: number;
+  currency: 'EUR';
+}
+
+export interface CoursePricingInput {
+  courseType: 'collectif' | 'particulier' | 'duo' | 'pack_3' | 'pack_6' | 'pack_10';
+  price: number;
+  duration: string;
+  maxStudents: number;
+  sessions?: number;
+  description?: string;
+  isActive?: 0 | 1;
+}
+
+export type UpdateCoursePricingInput = Partial<CoursePricingInput> & { id: number };
 
 export type AddCourseCreditInput = Pick<CourseCredit, 'studentId' | 'sessions' | 'expiresAt'> & {
   instructorId?: number;

@@ -67,8 +67,8 @@ export function BookCourseModal({
       return;
     }
 
-    if (currentBalance < sessionsRequired) {
-      setError('Solde de crédits insuffisant');
+    if (currentBalance < coursePrice) {
+      setError('Solde insuffisant pour réserver ce cours');
       return;
     }
 
@@ -77,32 +77,17 @@ export function BookCourseModal({
     try {
       // TROUVER la vraie session dans la BDD
       const allSessions = await db.courseSessions.toArray();
-      
-      console.log('[BookCourseModal] Toutes les sessions en BDD:', allSessions.map(s => ({
-        id: s.id,
-        courseId: s.courseId,
-        date: s.date,
-        time: s.startTime + '-' + s.endTime,
-      })));
-      
-      const matchingSession = allSessions.find(s => 
+
+      const matchingSession = allSessions.find(s =>
         s.date === selectedDate &&
         s.startTime === selectedSlot.startTime &&
         s.endTime === selectedSlot.endTime &&
         s.isActive === 1
       );
 
-      console.log('[BookCourseModal] Session recherchée:', {
-        selectedDate,
-        selectedSlot,
-        found: !!matchingSession,
-      });
-
       if (!matchingSession) {
         throw new Error('Créneau non disponible');
       }
-
-      console.log('[BookCourseModal] Vraie session trouvée:', matchingSession);
 
       await onConfirm(matchingSession);
       onClose();
@@ -115,7 +100,7 @@ export function BookCourseModal({
 
   if (!isOpen) return null;
 
-  const hasSufficientBalance = currentBalance >= sessionsRequired;
+  const hasSufficientBalance = currentBalance >= coursePrice;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -185,10 +170,10 @@ export function BookCourseModal({
                   <p className="text-sm text-gray-600 mt-1">
                     {selectedSlot ? (
                       <>
-                        {new Date(selectedDate).toLocaleDateString('fr-FR', { 
-                          weekday: 'long', 
-                          day: 'numeric', 
-                          month: 'long' 
+                        {new Date(selectedDate).toLocaleDateString('fr-FR', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long'
                         })}{' '}
                         à {selectedSlot.startTime}
                       </>
@@ -200,7 +185,7 @@ export function BookCourseModal({
                 <div className="text-right">
                   <p className="text-2xl font-bold text-gray-900">{coursePrice}€</p>
                   <p className="text-xs text-gray-500">
-                    {sessionsRequired} séance{sessionsRequired > 1 ? 's' : ''}
+                    Prix de la séance
                   </p>
                 </div>
               </div>
@@ -210,7 +195,13 @@ export function BookCourseModal({
                 hasSufficientBalance ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
               }`}>
                 <p className="text-sm font-medium">
-                  {hasSufficientBalance ? '✓' : '✗'} Solde actuel : {currentBalance} séance{currentBalance !== 1 ? 's' : ''}
+                  {hasSufficientBalance ? '✓' : '✗'} Solde actuel : {currentBalance.toFixed(2)}€
+                </p>
+                <p className="text-xs mt-1">
+                  {hasSufficientBalance 
+                    ? `Après réservation: ${(currentBalance - coursePrice).toFixed(2)}€`
+                    : `Il vous manque ${(coursePrice - currentBalance).toFixed(2)}€`
+                  }
                 </p>
               </div>
 

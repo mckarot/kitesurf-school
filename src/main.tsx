@@ -8,8 +8,9 @@ import { updateCompletedReservations } from './utils/reservationUtils';
 import './index.css';
 
 // Initialize database with seed data and update completed reservations
+
 Promise.all([
-  seedDatabase(),
+  seedDatabase(), // Seed réactivé
   updateCompletedReservations(),
 ])
   .then(([_, updatedCount]) => {

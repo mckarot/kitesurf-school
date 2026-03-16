@@ -2,7 +2,6 @@
 
 import type { AdminCreditView } from '../../../types';
 import { Button } from '../../../components/ui/Button';
-import { Badge } from '../../../components/ui/Badge';
 
 interface CreditsTableProps {
   students: AdminCreditView[];
@@ -11,25 +10,16 @@ interface CreditsTableProps {
 }
 
 /**
- * Tableau d'affichage des crédits élèves pour la page Admin.
+ * Tableau d'affichage des portefeuilles élèves (en euros).
  *
  * Affiche pour chaque élève:
  * - Nom et email
- * - Solde détaillé (total / utilisé / restant)
- * - Nombre de crédits
- * - Boutons d'action (Ajouter, Historique)
+ * - Solde en euros
+ * - Nombre de transactions
+ * - Boutons d'action (Ajouter des fonds, Historique)
  *
  * @param props - Props du composant
- * @returns JSX.Element - Tableau des crédits
- *
- * @example
- * ```tsx
- * <CreditsTable
- *   students={adminCreditViews}
- *   onAddCredits={(id) => setSelectedStudentId(id)}
- *   onViewHistory={(id) => setExpandedHistoryId(id)}
- * />
- * ```
+ * @returns JSX.Element - Tableau des portefeuilles
  */
 export function CreditsTable({ students, onAddCredits, onViewHistory }: CreditsTableProps) {
   if (students.length === 0) {
@@ -66,7 +56,7 @@ export function CreditsTable({ students, onAddCredits, onViewHistory }: CreditsT
         <table
           className="min-w-full divide-y divide-gray-200"
           role="table"
-          aria-label="Tableau des crédits élèves"
+          aria-label="Tableau des portefeuilles élèves"
         >
           <thead className="bg-gray-50">
             <tr>
@@ -81,6 +71,12 @@ export function CreditsTable({ students, onAddCredits, onViewHistory }: CreditsT
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Solde
+              </th>
+              <th
+                scope="col"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                Activité
               </th>
               <th
                 scope="col"
@@ -106,32 +102,55 @@ export function CreditsTable({ students, onAddCredits, onViewHistory }: CreditsT
                   </div>
                 </td>
 
-                {/* Solde */}
+                {/* Solde en euros */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex flex-col gap-1">
-                    {/* Séances restantes (en gros) */}
+                    {/* Solde (en gros) */}
                     <div className="flex items-center gap-2">
                       <span
-                        className={`text-lg font-bold ${
+                        className={`text-2xl font-bold ${
                           student.remainingSessions === 0
                             ? 'text-red-700'
-                            : student.remainingSessions <= 2
+                            : student.remainingSessions <= 20
                             ? 'text-yellow-700'
                             : 'text-green-700'
                         }`}
-                        aria-label={`${student.remainingSessions} séances restantes`}
+                        aria-label={`${student.remainingSessions.toFixed(2)} euros disponibles`}
                       >
-                        {student.remainingSessions} séances
+                        {student.remainingSessions.toFixed(2)}€
                       </span>
                       <span className="text-xs text-gray-500">disponibles</span>
                     </div>
 
-                    {/* Détail du solde */}
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span>Total: {student.totalSessions} séances</span>
-                      <span>•</span>
-                      <span>Utilisé: {student.usedSessions} séances</span>
+                    {/* Statut */}
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        student.remainingSessions >= 70
+                          ? 'bg-green-100 text-green-800'
+                          : student.remainingSessions > 0
+                          ? 'bg-yellow-100 text-yellow-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {student.remainingSessions >= 70
+                          ? '✓ Peut réserver (70€)'
+                          : student.remainingSessions > 0
+                          ? `⚠ Solde insuffisant (${(70 - student.remainingSessions).toFixed(2)}€ manquants)`
+                          : '✗ Solde vide'
+                        }
+                      </span>
                     </div>
+                  </div>
+                </td>
+
+                {/* Activité */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium text-gray-900">{student.creditsCount}</span> transaction{student.creditsCount > 1 ? 's' : ''}
+                    {student.lastCreditDate && (
+                      <span className="text-gray-500 ml-2">
+                        • {new Date(student.lastCreditDate).toLocaleDateString('fr-FR')}
+                      </span>
+                    )}
                   </div>
                 </td>
 
@@ -142,9 +161,9 @@ export function CreditsTable({ students, onAddCredits, onViewHistory }: CreditsT
                       variant="primary"
                       size="sm"
                       onClick={() => onAddCredits(student.studentId)}
-                      aria-label={`Ajouter des crédits pour ${student.studentName}`}
+                      aria-label={`Ajouter des fonds pour ${student.studentName}`}
                     >
-                      Ajouter
+                      Ajouter des fonds
                     </Button>
                     <Button
                       variant="secondary"

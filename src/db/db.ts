@@ -17,7 +17,9 @@ import type {
   UserConsent,
   SchoolSchedule,
   InstructorAvailability,
-  Notification
+  Notification,
+  UserWallet,
+  CoursePricing
 } from '../types';
 import { configureV5Migration } from './migrations/v5';
 import { configureV6Migration } from './migrations/v6';
@@ -25,6 +27,7 @@ import { configureV7Migration } from './migrations/v7';
 import { configureV8Migration } from './migrations/v8';
 import { configureV9Migration } from './migrations/v9';
 import { configureV10Migration } from './migrations/v10';
+import { configureV13Migration } from './migrations/v13';
 
 export class KiteSurfDB extends Dexie {
   users!: Table<User, number>;
@@ -42,6 +45,8 @@ export class KiteSurfDB extends Dexie {
   schoolSchedule!: Table<SchoolSchedule, number>;
   instructorAvailability!: Table<InstructorAvailability, number>;
   notifications!: Table<Notification, number>;
+  userWallets!: Table<UserWallet, number>;
+  coursePricing!: Table<CoursePricing, number>;
 
   constructor() {
     super('KiteSurfSchoolDB');
@@ -180,6 +185,11 @@ export class KiteSurfDB extends Dexie {
       courseCredits: '++id, studentId, [studentId+status], status, createdAt',
       notifications: '++id, userId, [userId+read], type, createdAt',
     });
+
+    // Version 13: Add userWallets and coursePricing tables for euros system
+    // userWallets: Stores euro balance for each user (replaces credit system)
+    // coursePricing: Dynamic pricing management by admin (displayed on /courses)
+    configureV13Migration(this);
   }
 }
 

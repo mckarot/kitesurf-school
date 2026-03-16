@@ -19,6 +19,8 @@ import { ProfileDataPage } from './pages/ProfileData';
 import { profileDataLoader, getCurrentUserId } from './pages/ProfileData/loader';
 import { CreditsPage } from './pages/Admin/Credits';
 import { creditsLoader } from './pages/Admin/Credits/loader';
+import { PricingPage } from './pages/Admin/Pricing';
+import { WalletsPage } from './pages/Admin/Wallets';
 import { studentLoader } from './pages/Student/loader';
 import { instructorLoader } from './pages/Instructor/loader';
 import { CreditsErrorBoundary } from './pages/Admin/Credits/CreditsErrorBoundary';
@@ -152,6 +154,16 @@ export const router = createBrowserRouter([
     element: <CreditsPage />,
     loader: creditsLoader,
     errorElement: <DbErrorBoundary><CreditsErrorBoundary><div /></CreditsErrorBoundary></DbErrorBoundary>,
+  },
+  {
+    path: '/admin/pricing',
+    element: <PricingPage />,
+    errorElement: <DbErrorBoundary><div /></DbErrorBoundary>,
+  },
+  {
+    path: '/admin/wallets',
+    element: <WalletsPage />,
+    errorElement: <DbErrorBoundary><div /></DbErrorBoundary>,
   },
   {
     path: '/admin/school-schedule',

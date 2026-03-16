@@ -14,11 +14,33 @@ import {
   ArrowRight,
   Calendar,
 } from 'lucide-react';
+import { useCoursePricing } from '../../hooks/useCoursePricing';
 
 export function CoursesPage() {
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef });
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const { prices, isLoading } = useCoursePricing();
+
+  // Afficher un loader pendant le chargement des tarifs
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div aria-busy="true" aria-live="polite" className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Chargement des tarifs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Récupérer les tarifs depuis la DB
+  const collectifPrice = prices.find(p => p.courseType === 'collectif' && p.isActive)?.price ?? 70;
+  const particulierPrice = prices.find(p => p.courseType === 'particulier' && p.isActive)?.price ?? 120;
+  const duoPrice = prices.find(p => p.courseType === 'duo' && p.isActive)?.price ?? 95;
+  const pack3Price = prices.find(p => p.courseType === 'pack_3' && p.isActive)?.price ?? 180;
+  const pack6Price = prices.find(p => p.courseType === 'pack_6' && p.isActive)?.price ?? 330;
+  const pack10Price = prices.find(p => p.courseType === 'pack_10' && p.isActive)?.price ?? 500;
 
   const courses = [
     {
@@ -26,7 +48,7 @@ export function CoursesPage() {
       name: 'Cours Collectif',
       description: 'Apprenez en groupe dans une ambiance conviviale',
       icon: Users,
-      price: 70,
+      price: collectifPrice,
       duration: '2h30',
       maxStudents: 6,
       level: 'Tous niveaux',
@@ -46,7 +68,7 @@ export function CoursesPage() {
       name: 'Cours Particulier',
       description: 'Un accompagnement 100% personnalisé',
       icon: User,
-      price: 120,
+      price: particulierPrice,
       duration: '2h30',
       maxStudents: 1,
       level: 'Tous niveaux',
@@ -66,7 +88,7 @@ export function CoursesPage() {
       name: 'Cours Duo',
       description: "Partagez l'expérience à deux",
       icon: UsersRound,
-      price: 95,
+      price: duoPrice,
       duration: '2h30',
       maxStudents: 2,
       level: 'Tous niveaux',
@@ -87,8 +109,8 @@ export function CoursesPage() {
     {
       name: 'Pack Découverte',
       sessions: 3,
-      price: 180,
-      saving: 30,
+      price: pack3Price,
+      saving: (collectifPrice * 3) - pack3Price,
       description: 'Parfait pour débuter et découvrir les sensations',
       features: [
         '3 cours collectifs',
@@ -100,8 +122,8 @@ export function CoursesPage() {
     {
       name: 'Pack Progression',
       sessions: 6,
-      price: 330,
-      saving: 90,
+      price: pack6Price,
+      saving: (collectifPrice * 6) - pack6Price,
       description: 'Pour acquérir les bases et devenir autonome',
       features: [
         '6 cours collectifs',
@@ -115,8 +137,8 @@ export function CoursesPage() {
     {
       name: 'Pack Expert',
       sessions: 10,
-      price: 500,
-      saving: 200,
+      price: pack10Price,
+      saving: (collectifPrice * 10) - pack10Price,
       description: 'La formule complète pour maîtriser le kite',
       features: [
         '10 cours (collectifs ou duos)',

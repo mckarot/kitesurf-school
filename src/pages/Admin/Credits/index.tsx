@@ -1,40 +1,106 @@
 // src/pages/Admin/Credits/index.tsx
+// Page Admin de gestion des crédits (maintenant en euros - système v13)
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useLoaderData, useNavigate } from 'react-router-dom';
-import { useCourseCredits } from '../../../hooks/useCourseCredits';
+import { useNavigate } from 'react-router-dom';
+import { useUserWallet } from '../../../hooks/useUserWallet';
+import { useCoursePricing } from '../../../hooks/useCoursePricing';
 import { CreditsTable } from './CreditsTable';
-import { AddCreditsModal } from './AddCreditsModal';
 import { CreditHistory } from './CreditHistory';
 import { CreditsErrorBoundary } from './CreditsErrorBoundary';
 import { StatsSummary } from './StatsSummary';
-import { buildAllAdminCreditViews } from '../../../utils/buildAdminCreditView';
-import type { AdminCreditsLoaderData, AddCreditsFormInput } from '../../../types';
+import { WalletsModal } from './WalletsModal';
+import type { UserWallet, WalletTransaction } from '../../../types';
 import { Button } from '../../../components/ui/Button';
-import { Gift, Users, TrendingUp, Clock, Plus } from 'lucide-react';
+import { Wallet, Users, TrendingUp } from 'lucide-react';
+import { db } from '../../../db/db';
 
 /**
- * Page Admin - Gestion des Crédits
+ * Page Admin - Gestion des Portefeuilles (Euros)
  * Design Metalab harmonisé
  */
 export function CreditsPage() {
-  const { students, credits, instructors } = useLoaderData() as AdminCreditsLoaderData;
   const navigate = useNavigate();
-  const { addCredit } = useCourseCredits();
+  const { prices } = useCoursePricing();
 
   // États locaux
-  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<{ id: number; name: string; balance: number } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
+  const [studentWallets, setStudentWallets] = useState<Array<{
+    user: { id: number; firstName: string; lastName: string; email: string };
+    wallet: UserWallet;
+    transactions: WalletTransaction[];
+  }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0); // Clé de rafraîchissement
 
-  // Construire les vues AdminCreditView
-  const adminCreditViews = buildAllAdminCreditViews(students, credits);
+  // Charger tous les étudiants avec leur wallet
+  useEffect(() => {
+    const loadStudentWallets = async () => {
+      setIsLoading(true);
+      try {
+        const students = await db.users.where('role').equals('student').toArray();
+        const wallets = await db.userWallets.toArray();
+        const allTransactions = await db.transactions.toArray();
+
+        const data = students.map((student) => {
+          const wallet = wallets.find((w) => w.userId === student.id);
+          const transactions = allTransactions
+            .filter((t) => t.userId === student.id)
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, 50);
+
+          return {
+            user: student,
+            wallet: wallet || { id: 0, userId: student.id, balance: 0, createdAt: Date.now() },
+            transactions: transactions as unknown as WalletTransaction[],
+          };
+        });
+
+        setStudentWallets(data);
+      } catch (error) {
+        console.error('[CreditsPage] Error loading student wallets:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadStudentWallets();
+  }, [refreshKey]); // Recharge quand refreshKey change
+
+  // Construire les vues pour le tableau
+  const adminCreditViews = studentWallets?.map((sw) => ({
+    studentId: sw.user.id,
+    studentName: `${sw.user.firstName} ${sw.user.lastName}`,
+    studentEmail: sw.user.email,
+    totalSessions: sw.wallet.balance, // Utilisé comme balance en euros
+    usedSessions: 0,
+    remainingSessions: sw.wallet.balance,
+    creditsCount: sw.transactions.length,
+    lastCreditDate: sw.transactions[0]?.createdAt,
+  })) || [];
+
+  // Stats pour le résumé
+  const stats = {
+    totalStudents: studentWallets?.length || 0,
+    totalBalance: studentWallets?.reduce((sum, sw) => sum + sw.wallet.balance, 0) || 0,
+    totalTransactions: studentWallets?.reduce((sum, sw) => sum + sw.transactions.length, 0) || 0,
+    studentsWithBalance: studentWallets?.filter((sw) => sw.wallet.balance > 0).length || 0,
+  };
 
   // Gérer l'ouverture du modal d'ajout
   const handleOpenAddModal = (studentId: number) => {
-    setSelectedStudentId(studentId);
-    setIsModalOpen(true);
+    const student = studentWallets?.find((sw) => sw.user.id === studentId);
+    if (student) {
+      setSelectedStudent({
+        id: student.user.id,
+        name: `${student.user.firstName} ${student.user.lastName}`,
+        balance: student.wallet.balance,
+      });
+      setIsModalOpen(true);
+    }
   };
 
   // Gérer la visualisation de l'historique
@@ -46,25 +112,76 @@ export function CreditsPage() {
     }
   };
 
-  // Soumettre l'ajout de crédits
-  const handleAddCredits = async (data: AddCreditsFormInput) => {
-    await addCredit({
-      studentId: data.studentId,
-      sessions: data.sessions,
-      expiresAt: data.expiresAt,
-    });
-    navigate(0);
+  // Rafraîchir après ajout
+  const handleAddFundsComplete = () => {
+    setIsModalOpen(false);
+    setSelectedStudent(null);
+    setRefreshKey(prev => prev + 1); // Force le rafraîchissement des données
+  };
+
+  // Fonction pour migrer la base de données vers v13
+  const handleMigrateDB = async () => {
+    if (!confirm('⚠️ Cette action va supprimer la base de données et recréer toutes les tables.\n\nLes données existantes (utilisateurs, cours, réservations) seront conservées car la migration v13 les préserve.\n\nContinuer ?')) {
+      return;
+    }
+
+    try {
+      console.log('🔄 Démarrage migration v13...');
+      
+      // Fermer la connexion Dexie (synchrone)
+      db.close();
+      console.log('✅ Connexion DB fermée');
+      
+      // Attendre un peu pour s'assurer que tout est fermé
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Supprimer l'ancienne DB
+      console.log('🗑️ Suppression de l\'ancienne DB...');
+      await new Promise<void>((resolve, reject) => {
+        const deleteRequest = indexedDB.deleteDatabase('KiteSurfSchoolDB');
+        deleteRequest.onsuccess = () => {
+          console.log('✅ DB supprimée avec succès');
+          resolve();
+        };
+        deleteRequest.onerror = (event) => {
+          console.error('❌ Erreur suppression DB:', event);
+          reject(new Error('Failed to delete database'));
+        };
+        deleteRequest.onblocked = () => {
+          console.warn('⚠️ DB toujours utilisée, impossible de supprimer');
+          reject(new Error('Database is still in use. Please close all tabs and try again.'));
+        };
+      });
+
+      // Recharger la page pour recréer la DB avec v13
+      console.log('🔄 Rechargement de la page...');
+      alert('✅ Base de données supprimée ! La page va se recharger pour initialiser la version 13 avec les tables userWallets et coursePricing.');
+      window.location.reload();
+    } catch (error) {
+      console.error('[handleMigrateDB] Error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+      alert('❌ Erreur lors de la migration: ' + errorMessage + '\n\nConseil: Ferme tous les onglets de l\'application et réessaie.');
+    }
   };
 
   return (
     <CreditsErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
-        {/* Hero Header */}
-        <motion.header
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-blue-50">
+        {isLoading ? (
+          <div className="min-h-screen flex items-center justify-center">
+            <div aria-busy="true" aria-live="polite" className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4" />
+              <p className="text-gray-600">Chargement des portefeuilles...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Hero Header */}
+            <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 text-white"
+          className="bg-gradient-to-br from-green-600 via-emerald-600 to-blue-600 text-white"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="flex items-center justify-between">
@@ -90,33 +207,36 @@ export function CreditsPage() {
                     transition={{ delay: 0.3, duration: 0.6 }}
                     className="text-4xl md:text-5xl font-bold"
                   >
-                    Gérer les Crédits
+                    Gérer les Portefeuilles
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4, duration: 0.6 }}
-                    className="text-purple-100 text-lg mt-2"
+                    className="text-green-100 text-lg mt-2"
                   >
-                    Ajoutez et suivez les crédits de cours des élèves
+                    Ajoutez des fonds et suivez les soldes en euros
                   </motion.p>
                 </div>
               </div>
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4, duration: 0.4 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setSelectedStudentId(null);
-                  setIsModalOpen(true);
-                }}
-                className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-full font-semibold hover:bg-purple-50 transition-all shadow-lg"
-              >
-                <Plus className="w-5 h-5" />
-                <span>Ajouter des crédits</span>
-              </motion.button>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate('/admin/wallets')}
+                  className="flex items-center space-x-2"
+                >
+                  <Wallet className="w-5 h-5" />
+                  <span>Vue complète</span>
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate('/admin/pricing')}
+                  className="flex items-center space-x-2"
+                >
+                  <TrendingUp className="w-5 h-5" />
+                  <span>Tarifs</span>
+                </Button>
+              </div>
             </div>
           </div>
         </motion.header>
@@ -130,8 +250,47 @@ export function CreditsPage() {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="mb-8"
           >
-            <div className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100">
-              <StatsSummary credits={credits} />
+            <div className="bg-white rounded-3xl shadow-xl p-6 border border-green-100">
+              <StatsSummary stats={stats} />
+            </div>
+          </motion.div>
+
+          {/* Info banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.5 }}
+            className="mb-6 rounded-xl bg-blue-50 border border-blue-200 p-4"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1">
+                <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm text-blue-800">
+                  <p className="font-semibold mb-1">Système de paiement en euros</p>
+                  <p>
+                    Les élèves utilisent leur solde en euros pour réserver des cours. 
+                    Pour gérer les tarifs, allez dans{' '}
+                    <a href="/admin/pricing" className="underline hover:text-blue-900 font-medium">
+                      Gestion des tarifs
+                    </a>
+                    .
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleMigrateDB}
+                className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+                title="Réinitialiser la base de données avec la version 13"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Migrer vers v13
+                </span>
+              </button>
             </div>
           </motion.div>
 
@@ -143,10 +302,10 @@ export function CreditsPage() {
             className="mb-8"
           >
             <div className="flex items-center space-x-2 mb-6">
-              <Users className="w-6 h-6 text-purple-600" />
+              <Users className="w-6 h-6 text-green-600" />
               <h2 className="text-2xl font-bold text-gray-900">Élèves inscrits</h2>
             </div>
-            <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-purple-100">
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-green-100">
               <CreditsTable
                 students={adminCreditViews}
                 onAddCredits={handleOpenAddModal}
@@ -165,8 +324,8 @@ export function CreditsPage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center space-x-2">
-                  <Clock className="w-6 h-6 text-pink-600" />
-                  <h2 className="text-2xl font-bold text-gray-900">Historique des crédits</h2>
+                  <Wallet className="w-6 h-6 text-blue-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">Historique des transactions</h2>
                 </div>
                 <button
                   onClick={() => setExpandedHistoryId(null)}
@@ -177,14 +336,14 @@ export function CreditsPage() {
                   </svg>
                 </button>
               </div>
-              <div className="bg-white rounded-3xl shadow-xl p-6 border border-pink-100">
+              <div className="bg-white rounded-3xl shadow-xl p-6 border border-blue-100">
                 <CreditHistory
                   studentId={expandedHistoryId}
                   studentName={
                     adminCreditViews.find((s) => s.studentId === expandedHistoryId)
                       ?.studentName || `Élève #${expandedHistoryId}`
                   }
-                  credits={credits.filter((c) => c.studentId === expandedHistoryId)}
+                  transactions={studentWallets?.find((sw) => sw.user.id === expandedHistoryId)?.transactions || []}
                   onClose={() => setExpandedHistoryId(null)}
                 />
               </div>
@@ -193,14 +352,17 @@ export function CreditsPage() {
         </main>
 
         {/* Add Credits Modal */}
-        <AddCreditsModal
+        <WalletsModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={handleAddCredits}
-          students={students}
-          instructors={instructors}
-          initialStudentId={selectedStudentId || undefined}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedStudent(null);
+          }}
+          student={selectedStudent}
+          onComplete={handleAddFundsComplete}
         />
+          </>
+        )}
       </div>
     </CreditsErrorBoundary>
   );

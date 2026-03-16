@@ -1,17 +1,20 @@
 // src/pages/Admin/Credits/StatsSummary.tsx
 
-import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import type { CourseCredit } from '../../../types';
-import { Users, Gift, CheckCircle, Clock } from 'lucide-react';
+import { Wallet, Users, TrendingUp, Euro } from 'lucide-react';
 
 interface StatsSummaryProps {
-  credits: CourseCredit[];
+  stats: {
+    totalStudents: number;
+    totalBalance: number;
+    totalTransactions: number;
+    studentsWithBalance: number;
+  };
 }
 
 interface StatCardProps {
   title: string;
-  value: number;
+  value: string | number;
   icon: React.ReactNode;
   color: string;
   delay?: number;
@@ -53,18 +56,9 @@ function StatCard({ title, value, icon, color, delay = 0 }: StatCardProps) {
 }
 
 /**
- * Composant d'affichage des statistiques globales des crédits.
+ * Composant d'affichage des statistiques globales des portefeuilles.
  */
-export function StatsSummary({ credits }: StatsSummaryProps) {
-  const stats = useMemo(() => {
-    const totalStudents = new Set(credits.map((c) => c.studentId)).size;
-    const totalSessions = credits.reduce((sum, c) => sum + c.sessions, 0);
-    const usedSessions = credits.reduce((sum, c) => sum + c.usedSessions, 0);
-    const remainingSessions = totalSessions - usedSessions;
-
-    return { totalStudents, totalSessions, usedSessions, remainingSessions };
-  }, [credits]);
-
+export function StatsSummary({ stats }: StatsSummaryProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatCard
@@ -75,23 +69,23 @@ export function StatsSummary({ credits }: StatsSummaryProps) {
         delay={0}
       />
       <StatCard
-        title="Séances totales"
-        value={stats.totalSessions}
-        icon={<Gift className="w-7 h-7" />}
+        title="Solde total cumulé"
+        value={`${stats.totalBalance.toFixed(2)}€`}
+        icon={<Wallet className="w-7 h-7" />}
         color="#10b981"
         delay={0.1}
       />
       <StatCard
-        title="Séances consommées"
-        value={stats.usedSessions}
-        icon={<CheckCircle className="w-7 h-7" />}
+        title="Transactions"
+        value={stats.totalTransactions}
+        icon={<TrendingUp className="w-7 h-7" />}
         color="#f59e0b"
         delay={0.2}
       />
       <StatCard
-        title="Séances restantes"
-        value={stats.remainingSessions}
-        icon={<Clock className="w-7 h-7" />}
+        title="Élèves avec solde > 0€"
+        value={stats.studentsWithBalance}
+        icon={<Euro className="w-7 h-7" />}
         color="#8b5cf6"
         delay={0.3}
       />
