@@ -83,7 +83,8 @@ export function useCourses(): UseCoursesReturn {
     setIsLoading(true);
     setError(null);
     try {
-      await db.courses.update(id, { isActive: 0 });
+      // Hard delete : supprime réellement le cours de la base
+      await db.courses.delete(id);
       await loadCourses();
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error('Failed to delete course');
