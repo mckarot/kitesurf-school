@@ -9,7 +9,8 @@ import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
 import { Card, CardBody } from '../../../components/ui/Card';
 import type { Reservation, User, Course, CourseSession } from '../../../types';
-import { notifyReservationConfirmed, notifyReservationCancelled } from '../../../utils/notifications';
+import { notifyReservationConfirmed } from '../../../utils/notifications';
+import { cancelReservationWithRefund } from '../../../utils/cancelReservationWithRefund';
 import { CheckCircle, XCircle, Clock, User as UserIcon, Calendar, AlertCircle } from 'lucide-react';
 
 export function AdminReservationsValidationPage() {
@@ -119,42 +120,27 @@ export function AdminReservationsValidationPage() {
 
   // Annuler une réservation
   const handleCancel = async (reservationId: number) => {
-    if (!confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
+    if (!confirm('Êtes-vous sûr de vouloir annuler cette réservation ?\n\nLes séances consommées seront recréditées à l\'élève.')) {
       return;
     }
 
     setIsProcessing(reservationId);
 
     try {
-      // Mettre à jour la réservation
-      await db.reservations.update(reservationId, {
-        status: 'cancelled' as const,
-      });
+      // Utiliser la fonction d'annulation avec remboursement
+      const result = await cancelReservationWithRefund(reservationId);
 
-      // Récupérer les données pour la notification
-      const reservation = await db.reservations.get(reservationId);
-      if (reservation) {
-        const [student, course] = await Promise.all([
-          db.users.get(reservation.studentId),
-          db.courses.get(reservation.courseId),
-        ]);
-
-        // Créer la notification
-        if (student && course) {
-          await notifyReservationCancelled(
-            reservation.studentId,
-            reservationId,
-            course.title,
-            'Annulation par l\'administrateur'
-          );
-        }
+      if (!result.success) {
+        throw new Error(result.error);
       }
 
       // Retirer de la liste
       setPendingReservations(prev => prev.filter(r => r.id !== reservationId));
+      
+      alert('✅ Réservation annulée et séances recréditées');
     } catch (error) {
       console.error('Error cancelling reservation:', error);
-      alert('Erreur lors de l\'annulation');
+      alert('Erreur lors de l\'annulation: ' + (error instanceof Error ? error.message : 'Erreur inconnue'));
     } finally {
       setIsProcessing(null);
     }

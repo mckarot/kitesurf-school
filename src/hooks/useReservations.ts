@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { db } from '../db/db';
 import type { Reservation, CreateReservationInput } from '../types';
+import { cancelReservationWithRefund } from '../utils/cancelReservationWithRefund';
 
 interface UseReservationsReturn {
   reservations: Reservation[];
@@ -58,7 +59,16 @@ export function useReservations(): UseReservationsReturn {
     setIsLoading(true);
     setError(null);
     try {
-      await db.reservations.update(id, { status });
+      // Si annulation, utiliser la fonction avec remboursement
+      if (status === 'cancelled') {
+        const result = await cancelReservationWithRefund(id);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+      } else {
+        // Pour confirmation ou autre statut, mise à jour simple
+        await db.reservations.update(id, { status });
+      }
       await loadReservations();
     } catch (err) {
       const errorObj = err instanceof Error ? err : new Error('Failed to update reservation');
