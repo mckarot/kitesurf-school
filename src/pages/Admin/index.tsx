@@ -214,6 +214,19 @@ export function AdminPage() {
             </Link>
 
             <Link
+              to="/admin/session-exceptions"
+              className="group bg-white rounded-3xl shadow-xl p-6 border border-red-100 hover:shadow-2xl transition-all"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-400 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <XCircle className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <h3 className="font-bold text-gray-900">Annulations</h3>
+              <p className="text-sm text-gray-600">Gérer les exceptions</p>
+            </Link>
+
+            <Link
               to="/admin/stats"
               className="group bg-white rounded-3xl shadow-xl p-6 border border-orange-100 hover:shadow-2xl transition-all"
             >

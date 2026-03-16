@@ -19,7 +19,8 @@ import type {
   InstructorAvailability,
   Notification,
   UserWallet,
-  CoursePricing
+  CoursePricing,
+  SessionException
 } from '../types';
 import { configureV5Migration } from './migrations/v5';
 import { configureV6Migration } from './migrations/v6';
@@ -28,6 +29,7 @@ import { configureV8Migration } from './migrations/v8';
 import { configureV9Migration } from './migrations/v9';
 import { configureV10Migration } from './migrations/v10';
 import { configureV13Migration } from './migrations/v13';
+import { configureV14Migration } from './migrations/v14';
 
 export class KiteSurfDB extends Dexie {
   users!: Table<User, number>;
@@ -47,6 +49,7 @@ export class KiteSurfDB extends Dexie {
   notifications!: Table<Notification, number>;
   userWallets!: Table<UserWallet, number>;
   coursePricing!: Table<CoursePricing, number>;
+  sessionExceptions!: Table<SessionException, number>;
 
   constructor() {
     super('KiteSurfSchoolDB');
@@ -198,6 +201,15 @@ export class KiteSurfDB extends Dexie {
     // userWallets: Stores euro balance for each user (replaces credit system)
     // coursePricing: Dynamic pricing management by admin (displayed on /courses)
     configureV13Migration(this);
+
+    // Version 14: Add sessionExceptions table for session cancellations and modifications
+    // sessionExceptions: Track cancellations for holidays, weather, instructor illness, etc.
+    // Enables automatic refunds and maintains audit history
+    this.version(14).stores({
+      sessionExceptions: '++id, sessionId, [sessionId+type], date, createdAt',
+    });
+    
+    configureV14Migration(this);
   }
 }
 

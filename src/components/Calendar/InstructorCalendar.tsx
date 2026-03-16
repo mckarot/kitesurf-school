@@ -3,13 +3,14 @@
 
 import { useState, useMemo } from 'react';
 import { Calendar } from '../ui/Calendar';
-import type { Course, Reservation, CourseSession } from '../../types';
+import type { Course, Reservation, CourseSession, SessionException } from '../../types';
 import { formatDateFr, formatTime } from '../../utils/dateUtils';
 
 interface InstructorCalendarProps {
   courses: Course[];
   reservations: Reservation[];
   courseSessions: CourseSession[];
+  exceptions?: SessionException[];
   onSessionClick?: (session: CourseSession) => void;
 }
 
@@ -17,6 +18,7 @@ export function InstructorCalendar({
   courses,
   reservations,
   courseSessions,
+  exceptions = [],
   onSessionClick,
 }: InstructorCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -25,12 +27,17 @@ export function InstructorCalendar({
   const [selectedSession, setSelectedSession] = useState<CourseSession | null>(null);
 
   // Build events for calendar visualization from course sessions
+  // Only show events for sessions that have at least one reservation
   const events: { date: string; label: string; color: string }[] = useMemo(() => {
     // Group sessions by date and show unique time slots
     const sessionsByDate = new Map<string, Set<string>>();
     
     courseSessions.forEach((session) => {
       if (!session.isActive) return;
+      
+      // Only include sessions that have at least one reservation
+      const reservationCount = reservations.filter(r => r.courseId === session.id).length;
+      if (reservationCount === 0) return;
       
       const timeLabel = `${formatTime(session.startTime)}-${formatTime(session.endTime)}`;
       if (!sessionsByDate.has(session.date)) {
@@ -45,24 +52,31 @@ export function InstructorCalendar({
         result.push({
           date,
           label: timeLabel,
-          color: '#10b981', // Green for available sessions
+          color: '#10b981', // Green for sessions with reservations
         });
       });
     });
 
     return result;
-  }, [courseSessions]);
+  }, [courseSessions, reservations]);
 
   // Get course sessions for selected date
+  // Exclude sessions that have been cancelled via exceptions
   const selectedDateSessions = useMemo(() => {
     if (!selectedDate) return [];
     return courseSessions
       .filter((session) => {
         if (!session.isActive) return false;
-        return session.date === selectedDate;
+        if (session.date !== selectedDate) return false;
+        
+        // Check if session has been cancelled
+        const isCancelled = exceptions.some(exc => exc.sessionId === session.id);
+        if (isCancelled) return false;
+        
+        return true;
       })
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  }, [courseSessions, selectedDate]);
+  }, [courseSessions, selectedDate, exceptions]);
 
   // Get unique sessions by time (group sessions with same time)
   const getUniqueSessionsByTime = (sessions: CourseSession[]) => {

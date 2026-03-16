@@ -600,3 +600,42 @@ export interface Notification {
   reservationId?: number;
   createdAt: number;
 }
+
+// ============================================
+// SESSION EXCEPTIONS (V14)
+// ============================================
+
+/**
+ * SessionException - Exceptions aux sessions de cours (annulations, modifications)
+ *
+ * Permet d'annuler ou modifier des sessions spécifiques sans affecter le SchoolSchedule.
+ * Les exceptions sont permanentes et traçées pour l'historique.
+ *
+ * Cas d'usage :
+ * - Congés d'été (période étendue)
+ * - Jours fériés
+ * - Météo défavorable
+ * - Moniteur malade
+ * - Événements spéciaux
+ */
+export interface SessionException {
+  id: number;
+  sessionId: number;        // CourseSession concernée
+  type: 'cancelled' | 'modified';
+  reason: string;           // "Congés d'été", "Férié", "Météo", "Moniteur malade"...
+  date: string;             // Date spécifique (YYYY-MM-DD)
+  createdAt: number;
+}
+
+/**
+ * Input pour créer une exception
+ */
+export type CreateSessionExceptionInput = Omit<SessionException, 'id' | 'createdAt'>;
+
+/**
+ * SessionException avec détails de la session
+ */
+export interface SessionExceptionWithDetails extends SessionException {
+  session?: CourseSession;
+  studentNames?: string[];  // Noms des élèves affectés (pour notification)
+}

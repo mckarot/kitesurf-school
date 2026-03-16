@@ -1,12 +1,13 @@
 // src/pages/InstructorCalendar/loader.ts
 
 import { db } from '../../db/db';
-import type { Course, Reservation, CourseSession } from '../../types';
+import type { Course, Reservation, CourseSession, SessionException } from '../../types';
 
 export interface InstructorCalendarLoaderData {
   courses: Course[];
   reservations: Reservation[];
   courseSessions: CourseSession[];
+  exceptions: SessionException[];
 }
 
 /**
@@ -27,10 +28,11 @@ export async function instructorCalendarLoader(
     const sixtyDaysLater = new Date(today);
     sixtyDaysLater.setDate(today.getDate() + 60);
     
-    const [courseSessions, allReservations] = await Promise.all([
+    const [courseSessions, allReservations, exceptions] = await Promise.all([
       // Get all course sessions for this instructor's courses
       db.courseSessions.where('courseId').anyOf(courseIds).toArray(),
       db.reservations.toArray(),
+      db.sessionExceptions.toArray(),
     ]);
 
     // Filter reservations to only those for sessions that match this instructor's courses
@@ -39,10 +41,10 @@ export async function instructorCalendarLoader(
       courseSessions.some(cs => cs.id === r.courseId) && r.status !== 'cancelled'
     );
 
-    return { courses, reservations, courseSessions };
+    return { courses, reservations, courseSessions, exceptions };
   } catch (err) {
     console.error('Failed to load instructor calendar data:', err);
-    return { courses: [], reservations: [], courseSessions: [] };
+    return { courses: [], reservations: [], courseSessions: [], exceptions: [] };
   }
 }
 

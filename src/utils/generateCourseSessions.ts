@@ -82,20 +82,50 @@ export async function generateCourseSessionsForPeriod(
 }
 
 /**
- * Génère les sessions pour les 30 prochains jours
+ * Génère les sessions pour les 365 prochains jours (1 an)
  * À appeler au chargement de la page Student
+ * 
+ * Génère automatiquement une nouvelle année de sessions au 1er janvier
  */
 export async function refreshCourseSessions(): Promise<void> {
   try {
     const today = new Date();
-    const thirtyDaysLater = new Date(today);
-    thirtyDaysLater.setDate(today.getDate() + 30);
+    
+    // Vérifier si c'est le 1er janvier - si oui, générer toute l'année
+    const isFirstDayOfYear = today.getMonth() === 0 && today.getDate() === 1;
+    const daysToGenerate = isFirstDayOfYear ? 365 : 90;
+    
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + daysToGenerate);
 
-    // Générer pour les 30 prochains jours
-    await generateCourseSessionsForPeriod(today, thirtyDaysLater);
+    // Générer pour la période spécifiée
+    await generateCourseSessionsForPeriod(today, endDate);
 
-    console.log('[refreshCourseSessions] Sessions mises à jour pour les 30 prochains jours');
+    console.log(`[refreshCourseSessions] Sessions mises à jour pour les ${daysToGenerate} prochains jours`);
+    
+    if (isFirstDayOfYear) {
+      console.log('[refreshCourseSessions] 🎉 Génération automatique de l\'année complète (1er janvier détecté)');
+    }
   } catch (error) {
     console.error('[refreshCourseSessions] Erreur:', error);
+  }
+}
+
+/**
+ * Génère les sessions pour 365 jours (1 an complet)
+ * Utilisé pour la génération initiale ou manuelle
+ */
+export async function generateFullYearSessions(year?: number): Promise<number> {
+  try {
+    const targetYear = year || new Date().getFullYear();
+    const startDate = new Date(targetYear, 0, 1); // 1er janvier
+    const endDate = new Date(targetYear, 11, 31); // 31 décembre
+    
+    console.log(`[generateFullYearSessions] Génération des sessions pour l'année ${targetYear}`);
+    
+    return await generateCourseSessionsForPeriod(startDate, endDate);
+  } catch (error) {
+    console.error('[generateFullYearSessions] Erreur:', error);
+    return 0;
   }
 }

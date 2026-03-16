@@ -33,6 +33,8 @@ import { ConsentsPage } from './pages/Profile/ConsentsPage';
 import { EditProfilePage } from './pages/Profile/EditProfilePage';
 import { SchoolSchedulePage } from './pages/Admin/SchoolSchedule';
 import { AdminReservationsValidationPage } from './pages/Admin/ReservationsValidation';
+import { SessionExceptionsPage } from './pages/Admin/SessionExceptions';
+import { sessionExceptionsLoader } from './pages/Admin/SessionExceptions/loader';
 
 // New public pages with Metalab design
 import { MainLayout } from './components/Layout/MainLayout';
@@ -173,6 +175,12 @@ export const router = createBrowserRouter([
   {
     path: '/admin/reservations-validation',
     element: <AdminReservationsValidationPage />,
+    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+  },
+  {
+    path: '/admin/session-exceptions',
+    element: <SessionExceptionsPage />,
+    loader: sessionExceptionsLoader,
     errorElement: <ErrorBoundary><div /></ErrorBoundary>,
   },
   {

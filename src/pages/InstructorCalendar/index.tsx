@@ -7,11 +7,27 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { InstructorCalendar } from '../../components/Calendar/InstructorCalendar';
 import type { InstructorCalendarLoaderData } from './loader';
-import { Calendar, Clock, ArrowLeft, Users } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, Users, RefreshCw } from 'lucide-react';
+import { refreshCourseSessions } from '../../utils/generateCourseSessions';
 
 export function InstructorCalendarPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { courses, reservations, courseSessions } = useLoaderData() as InstructorCalendarLoaderData;
+  const { courses, reservations, courseSessions, exceptions } = useLoaderData() as InstructorCalendarLoaderData;
+
+  const handleRefreshSessions = async () => {
+    if (!confirm('Générer les sessions de cours pour les 90 prochains jours ?')) {
+      return;
+    }
+    
+    try {
+      await refreshCourseSessions();
+      alert('✅ Sessions générées avec succès !');
+      window.location.reload(); // Recharger pour afficher les nouvelles sessions
+    } catch (error) {
+      alert('❌ Erreur lors de la génération des sessions');
+      console.error(error);
+    }
+  };
 
   if (authLoading) {
     return (
@@ -79,18 +95,33 @@ export function InstructorCalendarPage() {
                 </motion.p>
               </div>
             </div>
-            <motion.a
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.5, duration: 0.4 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              href="/admin/school-schedule"
-              className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-full font-semibold hover:bg-purple-50 transition-all shadow-lg"
-            >
-              <Clock className="w-5 h-5" />
-              <span>Gérer l'emploi du temps</span>
-            </motion.a>
+            <div className="flex items-center gap-2">
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleRefreshSessions}
+                className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-full font-semibold hover:bg-white/30 transition-all"
+                title="Générer les sessions pour les 90 prochains jours"
+              >
+                <RefreshCw className="w-5 h-5" />
+                <span>Mettre à jour</span>
+              </motion.button>
+              <motion.a
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6, duration: 0.4 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                href="/admin/school-schedule"
+                className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-full font-semibold hover:bg-purple-50 transition-all shadow-lg"
+              >
+                <Clock className="w-5 h-5" />
+                <span>Gérer l'emploi du temps</span>
+              </motion.a>
+            </div>
           </div>
         </div>
       </motion.header>
@@ -164,6 +195,7 @@ export function InstructorCalendarPage() {
             courses={courses}
             reservations={reservations}
             courseSessions={courseSessions}
+            exceptions={exceptions}
           />
         </motion.div>
       </main>

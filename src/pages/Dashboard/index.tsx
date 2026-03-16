@@ -20,7 +20,9 @@ import {
   Clock,
   TrendingUp,
   CheckCircle,
-  UserCheck
+  UserCheck,
+  Gift,
+  XCircle
 } from 'lucide-react';
 
 export function DashboardPage() {
@@ -306,6 +308,22 @@ export function DashboardPage() {
                 </motion.div>
               </Link>
 
+              {/* Annulations */}
+              <Link to="/admin/session-exceptions">
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="bg-white rounded-3xl shadow-xl p-6 border border-red-100 cursor-pointer hover:shadow-2xl transition-all"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-pink-400 rounded-2xl flex items-center justify-center">
+                      <XCircle className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">Annulations</h3>
+                  <p className="text-sm text-gray-600">Gérer les exceptions</p>
+                </motion.div>
+              </Link>
+
               {/* Statistiques */}
               <Link to="/admin/stats">
                 <motion.div
@@ -420,11 +438,4 @@ export function DashboardPage() {
   );
 }
 
-// Icône Gift manquante
-function Gift({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-    </svg>
-  );
-}
+export default DashboardPage;
