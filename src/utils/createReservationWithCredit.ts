@@ -14,6 +14,10 @@ import { notifyReservationPending } from './notifications';
  * 3. Consomme les séances en commençant par le crédit le plus ancien
  * 4. Crée la réservation dans la même transaction
  *
+ * VALIDATIONS:
+ * - Vérifie que le cours n'est pas complet (maxStudents)
+ * - Vérifie que l'élève n'a pas déjà réservé cette session
+ *
  * Business Logic:
  * - 1 réservation = 1 séance consommée
  * - Transaction atomique: si une étape échoue, tout est annulé
@@ -50,9 +54,58 @@ export async function createReservationWithCredit(
 
   try {
     // Transaction atomique pour garantir la cohérence des données
-    // 'rw' = read-write sur les tables courseCredits et reservations
-    return await db.transaction('rw', db.courseCredits, db.reservations, async () => {
-      // Étape 1: Récupérer tous les crédits actifs de l'étudiant
+    // 'rw' = read-write sur les tables courseCredits, reservations, courseSessions, courses
+    return await db.transaction('rw', db.courseCredits, db.reservations, db.courseSessions, db.courses, async () => {
+      // Étape 0: Récupérer la session et le cours pour vérifications
+      const session = await db.courseSessions.get(courseSessionId);
+      const course = await db.courses.get(courseSessionId);
+
+      if (!session || !course) {
+        return {
+          success: false,
+          error: 'Session de cours introuvable'
+        };
+      }
+
+      // Étape 1: Vérifier si le cours est complet
+      const existingReservations = await db.reservations
+        .where('[courseId+status]')
+        .equals([courseSessionId, 'confirmed'])
+        .toArray();
+
+      // Compter aussi les pending pour éviter les doubles réservations
+      const allReservations = await db.reservations
+        .where('courseId')
+        .equals(courseSessionId)
+        .toArray();
+
+      if (allReservations.length >= course.maxStudents) {
+        return {
+          success: false,
+          error: `Cours complet ! Maximum ${course.maxStudents} élèves atteints.`
+        };
+      }
+
+      // Étape 2: Vérifier si l'élève a déjà réservé cette session
+      const existingReservation = await db.reservations
+        .where('[studentId+courseId]')
+        .equals([studentId, courseSessionId])
+        .first();
+
+      if (existingReservation) {
+        const statusText = existingReservation.status === 'pending' 
+          ? 'en attente de confirmation'
+          : existingReservation.status === 'confirmed'
+          ? 'déjà confirmée'
+          : existingReservation.status;
+        
+        return {
+          success: false,
+          error: `Vous avez déjà une réservation ${statusText} pour ce cours.`
+        };
+      }
+
+      // Étape 3: Récupérer tous les crédits actifs de l'étudiant
       // Utilisation de l'index 'studentId' pour une requête optimisée O(log n)
       // Tri par createdAt pour appliquer la logique FIFO (plus ancien en premier)
       const activeCredits = await db.courseCredits
@@ -60,10 +113,10 @@ export async function createReservationWithCredit(
         .equals([studentId, 'active'])
         .sortBy('createdAt');
 
-      // Étape 2: Calculer le solde actuel
+      // Étape 4: Calculer le solde actuel
       const currentBalance = calculateBalance(activeCredits);
 
-      // Étape 3: Vérifier si le solde est suffisant
+      // Étape 5: Vérifier si le solde est suffisant
       if (currentBalance.remainingSessions < sessionsToConsume) {
         // Annulation automatique de la transaction par Dexie
         // Retourner un résultat d'erreur sans lever d'exception
@@ -73,7 +126,7 @@ export async function createReservationWithCredit(
         };
       }
 
-      // Étape 4: Consommer les séances en FIFO (First In, First Out)
+      // Étape 6: Consommer les séances en FIFO (First In, First Out)
       // Les crédits sont déjà triés par createdAt (du plus ancien au plus récent)
       let sessionsRemainingToConsume = sessionsToConsume;
 
@@ -99,7 +152,7 @@ export async function createReservationWithCredit(
         sessionsRemainingToConsume -= sessionsToTakeFromThisCredit;
       }
 
-      // Étape 5: Créer la réservation avec statut 'pending'
+      // Étape 7: Créer la réservation avec statut 'pending'
       // L'admin devra confirmer et assigner un moniteur
       const reservationId = await db.reservations.add({
         studentId,
@@ -111,7 +164,7 @@ export async function createReservationWithCredit(
         createdAt: Date.now(),
       } as any);
 
-      // Étape 6: Recalculer le nouveau solde après consommation
+      // Étape 8: Recalculer le nouveau solde après consommation
       // Relecture des crédits mis à jour dans la transaction
       const updatedCredits = await db.courseCredits
         .where('[studentId+status]')
@@ -120,12 +173,9 @@ export async function createReservationWithCredit(
 
       const newBalance = calculateBalance(updatedCredits);
 
-      // Étape 7: Créer une notification pour l'élève
+      // Étape 9: Créer une notification pour l'élève
       // (en dehors de la transaction car les notifications ne sont pas critiques)
       try {
-        const session = await db.courseSessions.get(courseSessionId);
-        const course = await db.courses.get(courseSessionId);
-        
         if (session && course) {
           await notifyReservationPending(
             studentId,
