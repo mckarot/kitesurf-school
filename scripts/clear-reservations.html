@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supprimer les réservations</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    p {
+      color: #666;
+      margin-bottom: 20px;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.02);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 15px;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🗑️ Supprimer les réservations</h1>
+    <p>Ce script va supprimer toutes les réservations des élèves de la base de données.</p>
+    
+    <button id="clearBtn" onclick="clearReservations()">
+      Supprimer toutes les réservations
+    </button>
+    
+    <div id="status"></div>
+    
+    <a href="/" class="back-link">← Retour à l'accueil</a>
+  </div>
+
+  <script type="module">
+    import { db } from '../src/db/db.ts';
+
+    window.clearReservations = async function() {
+      const btn = document.getElementById('clearBtn');
+      const status = document.getElementById('status');
+      
+      btn.disabled = true;
+      btn.textContent = 'Suppression en cours...';
+      
+      try {
+        // Compter les réservations avant suppression
+        const count = await db.reservations.count();
+        
+        if (count === 0) {
+          status.className = 'status info';
+          status.textContent = 'ℹ️ Aucune réservation à supprimer';
+          btn.disabled = false;
+          btn.textContent = 'Supprimer toutes les réservations';
+          return;
+        }
+        
+        status.className = 'status info';
+        status.textContent = `📋 Suppression de ${count} réservation(s)...`;
+        
+        // Supprimer toutes les réservations
+        await db.reservations.clear();
+        
+        // Vérifier après suppression
+        const remaining = await db.reservations.count();
+        
+        status.className = 'status success';
+        status.innerHTML = `
+          ✅ Toutes les réservations ont été supprimées !<br>
+          <strong>${count}</strong> réservations supprimées.<br>
+          <strong>${remaining}</strong> réservations restantes.
+        `;
+        
+        btn.textContent = 'Réservations supprimées';
+      } catch (error) {
+        status.className = 'status error';
+        status.innerHTML = `
+          ❌ Erreur lors de la suppression<br>
+          <code>${error.message}</code>
+        `;
+        btn.disabled = false;
+        btn.textContent = 'Supprimer toutes les réservations';
+      }
+    };
+  </script>
+</body>
+</html>

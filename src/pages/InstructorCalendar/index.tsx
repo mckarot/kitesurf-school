@@ -1,16 +1,17 @@
 // src/pages/InstructorCalendar/index.tsx
-// Calendrier des créneaux moniteur avec design Metalab
+// Calendrier des sessions moniteur avec design Metalab
+// Basé sur le nouveau système SchoolSchedule (créneaux automatiques)
 
 import { useLoaderData, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
 import { InstructorCalendar } from '../../components/Calendar/InstructorCalendar';
 import type { InstructorCalendarLoaderData } from './loader';
-import { Calendar, Clock, Plus, ArrowLeft } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, Users } from 'lucide-react';
 
 export function InstructorCalendarPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { timeSlots, courses, reservations } = useLoaderData() as InstructorCalendarLoaderData;
+  const { courses, reservations, courseSessions } = useLoaderData() as InstructorCalendarLoaderData;
 
   if (authLoading) {
     return (
@@ -26,6 +27,11 @@ export function InstructorCalendarPage() {
   if (!user || user.role !== 'instructor') {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // Calculate stats from course sessions
+  const activeSessions = courseSessions.filter(s => s.isActive).length;
+  const totalReservations = reservations.length;
+  const totalCapacity = courseSessions.reduce((sum, s) => sum + s.maxStudents, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
@@ -61,7 +67,7 @@ export function InstructorCalendarPage() {
                   <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
                     <Calendar className="w-6 h-6 text-white" />
                   </div>
-                  <h1 className="text-4xl md:text-5xl font-bold">Calendrier des Créneaux</h1>
+                  <h1 className="text-4xl md:text-5xl font-bold">Calendrier des Sessions</h1>
                 </motion.div>
                 <motion.p
                   initial={{ opacity: 0, x: -20 }}
@@ -69,7 +75,7 @@ export function InstructorCalendarPage() {
                   transition={{ delay: 0.4, duration: 0.6 }}
                   className="text-purple-100 text-lg"
                 >
-                  Visualisez et gérez vos créneaux horaires
+                  Visualisez les sessions générées automatiquement
                 </motion.p>
               </div>
             </div>
@@ -79,11 +85,11 @@ export function InstructorCalendarPage() {
               transition={{ delay: 0.5, duration: 0.4 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              href="/instructor/timeslots"
+              href="/admin/school-schedule"
               className="flex items-center space-x-2 bg-white text-purple-600 px-6 py-3 rounded-full font-semibold hover:bg-purple-50 transition-all shadow-lg"
             >
-              <Plus className="w-5 h-5" />
-              <span>Gérer les créneaux</span>
+              <Clock className="w-5 h-5" />
+              <span>Gérer l'emploi du temps</span>
             </motion.a>
           </div>
         </div>
@@ -98,53 +104,49 @@ export function InstructorCalendarPage() {
           transition={{ delay: 0.2, duration: 0.5 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
         >
-          {/* Total créneaux */}
+          {/* Total sessions */}
           <motion.div
             whileHover={{ y: -4, scale: 1.02 }}
             className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total créneaux</p>
-                <p className="text-4xl font-bold text-purple-600">{timeSlots.length}</p>
+                <p className="text-sm text-gray-600 mb-1">Total sessions</p>
+                <p className="text-4xl font-bold text-purple-600">{activeSessions}</p>
               </div>
               <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-400 rounded-2xl flex items-center justify-center">
-                <Clock className="w-8 h-8 text-white" />
+                <Calendar className="w-8 h-8 text-white" />
               </div>
             </div>
           </motion.div>
 
-          {/* Créneaux disponibles */}
+          {/* Réservations */}
           <motion.div
             whileHover={{ y: -4, scale: 1.02 }}
             className="bg-white rounded-3xl shadow-xl p-6 border border-green-100"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Disponibles</p>
-                <p className="text-4xl font-bold text-green-600">
-                  {timeSlots.filter(slot => slot.isAvailable === 1).length}
-                </p>
+                <p className="text-sm text-gray-600 mb-1">Réservations</p>
+                <p className="text-4xl font-bold text-green-600">{totalReservations}</p>
               </div>
               <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-400 rounded-2xl flex items-center justify-center">
-                <Calendar className="w-8 h-8 text-white" />
+                <Users className="w-8 h-8 text-white" />
               </div>
             </div>
           </motion.div>
 
-          {/* Créneaux indisponibles */}
+          {/* Capacité totale */}
           <motion.div
             whileHover={{ y: -4, scale: 1.02 }}
-            className="bg-white rounded-3xl shadow-xl p-6 border border-red-100"
+            className="bg-white rounded-3xl shadow-xl p-6 border border-blue-100"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Indisponibles</p>
-                <p className="text-4xl font-bold text-red-600">
-                  {timeSlots.filter(slot => slot.isAvailable === 0).length}
-                </p>
+                <p className="text-sm text-gray-600 mb-1">Capacité totale</p>
+                <p className="text-4xl font-bold text-blue-600">{totalCapacity}</p>
               </div>
-              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-400 rounded-2xl flex items-center justify-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
                 <Clock className="w-8 h-8 text-white" />
               </div>
             </div>
@@ -159,9 +161,9 @@ export function InstructorCalendarPage() {
           className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100"
         >
           <InstructorCalendar
-            timeSlots={timeSlots}
             courses={courses}
             reservations={reservations}
+            courseSessions={courseSessions}
           />
         </motion.div>
       </main>

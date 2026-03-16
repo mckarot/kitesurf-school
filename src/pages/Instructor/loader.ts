@@ -1,7 +1,7 @@
 // src/pages/Instructor/loader.ts
 
 import { db } from '../../db/db';
-import type { CourseCredit, TimeSlot, User, Reservation, Course } from '../../types';
+import type { CourseCredit, TimeSlot, User, Reservation, Course, CourseSession } from '../../types';
 
 export interface InstructorLoaderData {
   credits: CourseCredit[];
@@ -9,6 +9,7 @@ export interface InstructorLoaderData {
   students: User[];
   reservations: Reservation[];
   courses: Course[];
+  courseSessions: CourseSession[];
   instructorId: number;
 }
 
@@ -50,13 +51,23 @@ export async function instructorLoader(): Promise<InstructorLoaderData> {
     throw new Error('Invalid user ID');
   }
 
-  const [credits, timeSlots, students, reservations, courses] = await Promise.all([
+  // Get courses for this instructor first
+  const courses = await db.courses.where('instructorId').equals(instructorId).toArray();
+  const courseIds = courses.map(c => c.id);
+
+  const [credits, timeSlots, students, allReservations, courseSessions] = await Promise.all([
     db.courseCredits.toArray(), // Tous les crédits (filtrage en mémoire)
     db.timeSlots.where('instructorId').equals(instructorId).toArray(),
     db.users.where('role').equals('student').toArray(),
     db.reservations.toArray(),
-    db.courses.toArray(),
+    // Get course sessions for this instructor's courses
+    db.courseSessions.where('courseId').anyOf(courseIds).toArray(),
   ]);
 
-  return { credits, timeSlots, students, reservations, courses, instructorId };
+  // Filter reservations to only those for this instructor's courses/sessions
+  const reservations = allReservations.filter(r => 
+    courseSessions.some(cs => cs.id === r.courseId) && r.status !== 'cancelled'
+  );
+
+  return { credits, timeSlots, students, reservations, courses, courseSessions, instructorId };
 }

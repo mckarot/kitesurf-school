@@ -29,7 +29,7 @@ import {
  */
 export function InstructorPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { credits, timeSlots, students, reservations, courses, instructorId } = useLoaderData() as InstructorLoaderData;
+  const { credits, timeSlots, students, reservations, courses, instructorId, courseSessions } = useLoaderData() as InstructorLoaderData;
 
   if (authLoading) {
     return (
@@ -250,6 +250,7 @@ export function InstructorPage() {
               reservations={reservations}
               students={students}
               courses={courses}
+              courseSessions={courseSessions}
             />
           </motion.section>
 

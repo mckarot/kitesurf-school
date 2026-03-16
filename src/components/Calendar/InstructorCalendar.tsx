@@ -1,72 +1,109 @@
 // src/components/Calendar/InstructorCalendar.tsx
+// Calendrier instructeur basé sur les CourseSessions (SchoolSchedule)
 
 import { useState, useMemo } from 'react';
 import { Calendar } from '../ui/Calendar';
-import type { TimeSlot, Course, Reservation } from '../../types';
+import type { Course, Reservation, CourseSession } from '../../types';
 import { formatDateFr, formatTime } from '../../utils/dateUtils';
 
 interface InstructorCalendarProps {
-  timeSlots: TimeSlot[];
   courses: Course[];
   reservations: Reservation[];
-  onSlotClick?: (timeSlot: TimeSlot) => void;
-}
-
-interface TimeSlotDetail {
-  date: string;
-  label: string;
-  color: string;
-  slot: TimeSlot;
+  courseSessions: CourseSession[];
+  onSessionClick?: (session: CourseSession) => void;
 }
 
 export function InstructorCalendar({
-  timeSlots,
   courses,
   reservations,
-  onSlotClick,
+  courseSessions,
+  onSessionClick,
 }: InstructorCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
-  const [view, setView] = useState<'week' | 'month'>('week');
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [view, setView] = useState<'week' | 'month'>('month');
+  const [selectedSession, setSelectedSession] = useState<CourseSession | null>(null);
 
-  // Build events for calendar visualization
+  // Build events for calendar visualization from course sessions
   const events: { date: string; label: string; color: string }[] = useMemo(() => {
-    return timeSlots
-      .filter((slot) => slot.isAvailable === 1)
-      .map((slot) => ({
-        date: slot.date,
-        label: `${formatTime(slot.startTime)}-${formatTime(slot.endTime)}`,
-        color: slot.isAvailable ? '#10b981' : '#6b7280',
-      }));
-  }, [timeSlots]);
+    // Group sessions by date and show unique time slots
+    const sessionsByDate = new Map<string, Set<string>>();
+    
+    courseSessions.forEach((session) => {
+      if (!session.isActive) return;
+      
+      const timeLabel = `${formatTime(session.startTime)}-${formatTime(session.endTime)}`;
+      if (!sessionsByDate.has(session.date)) {
+        sessionsByDate.set(session.date, new Set());
+      }
+      sessionsByDate.get(session.date)!.add(timeLabel);
+    });
 
-  // Get time slots for selected date
-  const selectedDateSlots = useMemo(() => {
+    const result: { date: string; label: string; color: string }[] = [];
+    sessionsByDate.forEach((times, date) => {
+      times.forEach((timeLabel) => {
+        result.push({
+          date,
+          label: timeLabel,
+          color: '#10b981', // Green for available sessions
+        });
+      });
+    });
+
+    return result;
+  }, [courseSessions]);
+
+  // Get course sessions for selected date
+  const selectedDateSessions = useMemo(() => {
     if (!selectedDate) return [];
-    return timeSlots
-      .filter((slot) => slot.date === selectedDate)
+    return courseSessions
+      .filter((session) => {
+        if (!session.isActive) return false;
+        return session.date === selectedDate;
+      })
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
-  }, [timeSlots, selectedDate]);
+  }, [courseSessions, selectedDate]);
 
-  // Get reservation count for a time slot
-  const getReservationCount = (slot: TimeSlot): number => {
-    const course = courses.find((c) => c.instructorId === slot.instructorId);
-    if (!course) return 0;
-
-    return reservations.filter(
-      (r) => r.courseId === course.id && r.status !== 'cancelled'
-    ).length;
+  // Get unique sessions by time (group sessions with same time)
+  const getUniqueSessionsByTime = (sessions: CourseSession[]) => {
+    const timeMap = new Map<string, CourseSession[]>();
+    sessions.forEach((session) => {
+      const key = `${session.startTime}-${session.endTime}`;
+      if (!timeMap.has(key)) {
+        timeMap.set(key, []);
+      }
+      timeMap.get(key)!.push(session);
+    });
+    return Array.from(timeMap.entries()).map(([timeLabel, sessions]) => ({
+      timeLabel,
+      sessions,
+      startTime: sessions[0].startTime,
+      endTime: sessions[0].endTime,
+    }));
   };
 
-  const handleSlotClick = (slot: TimeSlot) => {
-    setSelectedSlot(slot);
-    onSlotClick?.(slot);
+  // Get reservation count for a course session
+  const getReservationCount = (session: CourseSession): number => {
+    return reservations.filter((r) => r.courseId === session.id).length;
+  };
+
+  // Get total capacity for a time slot (sum of all sessions at that time)
+  const getTotalCapacity = (sessions: CourseSession[]): number => {
+    return sessions.reduce((sum, s) => sum + s.maxStudents, 0);
+  };
+
+  const handleSessionClick = (session: CourseSession) => {
+    setSelectedSession(session);
+    onSessionClick?.(session);
   };
 
   const handleCloseModal = () => {
-    setSelectedSlot(null);
+    setSelectedSession(null);
   };
+
+  // Calculate stats
+  const totalSessions = courseSessions.filter(s => s.isActive).length;
+  const totalReservations = reservations.length;
 
   return (
     <div className="space-y-6">
@@ -99,11 +136,7 @@ export function InstructorCalendar({
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-gray-600">Disponible</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-500" />
-            <span className="text-gray-600">Indisponible</span>
+            <span className="text-gray-600">Sessions de cours</span>
           </div>
         </div>
       </div>
@@ -118,21 +151,26 @@ export function InstructorCalendar({
         events={events}
       />
 
-      {/* Selected date slots */}
-      {selectedDate && selectedDateSlots.length > 0 && (
-        <section aria-label={`Créneaux du ${formatDateFr(selectedDate)}`}>
+      {/* Selected date sessions */}
+      {selectedDate && selectedDateSessions.length > 0 && (
+        <section aria-label={`Sessions du ${formatDateFr(selectedDate)}`}>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            Créneaux du {formatDateFr(selectedDate)}
+            Sessions du {formatDateFr(selectedDate)}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {selectedDateSlots.map((slot) => {
-              const reservationCount = getReservationCount(slot);
+            {getUniqueSessionsByTime(selectedDateSessions).map(({ timeLabel, sessions, startTime, endTime }) => {
+              const totalReservationsForSlot = sessions.reduce(
+                (sum, s) => sum + getReservationCount(s),
+                0
+              );
+              const totalCapacity = getTotalCapacity(sessions);
+
               return (
                 <button
-                  key={slot.id}
-                  onClick={() => handleSlotClick(slot)}
+                  key={timeLabel}
+                  onClick={() => handleSessionClick(sessions[0])}
                   className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md hover:border-blue-300 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
-                  aria-label={`Créneau ${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}, ${slot.isAvailable ? 'disponible' : 'indisponible'}`}
+                  aria-label={`Session ${timeLabel}`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -151,38 +189,22 @@ export function InstructorCalendar({
                       </svg>
                       <div>
                         <p className="text-sm font-semibold text-gray-900">
-                          {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
+                          {formatTime(startTime)} - {formatTime(endTime)}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {Math.round(
-                            ((parseInt(slot.endTime.split(':')[0]) * 60 +
-                              parseInt(slot.endTime.split(':')[1]) -
-                              parseInt(slot.startTime.split(':')[0]) * 60 -
-                              parseInt(slot.startTime.split(':')[1])) /
-                              60) *
-                              10
-                          ) / 10}
-                          h
+                          {sessions.length} session{sessions.length > 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        slot.isAvailable
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {slot.isAvailable ? 'Disponible' : 'Indisponible'}
+                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                      Actif
                     </span>
                   </div>
-                  {reservationCount > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                      <p className="text-xs text-gray-600">
-                        {reservationCount} réservation{reservationCount > 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  )}
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-600">
+                      {totalReservationsForSlot} réservation{totalReservationsForSlot > 1 ? 's' : ''} / {totalCapacity} places
+                    </p>
+                  </div>
                 </button>
               );
             })}
@@ -190,7 +212,7 @@ export function InstructorCalendar({
         </section>
       )}
 
-      {selectedDate && selectedDateSlots.length === 0 && (
+      {selectedDate && selectedDateSessions.length === 0 && (
         <div className="text-center py-8 bg-gray-50 rounded-xl border border-gray-200">
           <svg
             className="w-12 h-12 text-gray-300 mx-auto mb-3"
@@ -205,17 +227,20 @@ export function InstructorCalendar({
               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <p className="text-gray-600">Aucun créneau pour cette date</p>
+          <p className="text-gray-600">Aucune session pour cette date</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Les sessions sont générées automatiquement selon l'emploi du temps de l'école
+          </p>
         </div>
       )}
 
-      {/* Slot detail modal */}
-      {selectedSlot && (
+      {/* Session detail modal */}
+      {selectedSession && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           role="dialog"
           aria-modal="true"
-          aria-label="Détails du créneau"
+          aria-label="Détails de la session"
           onClick={handleCloseModal}
         >
           <div
@@ -224,7 +249,7 @@ export function InstructorCalendar({
           >
             <div className="flex items-start justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                Détails du créneau
+                Détails de la session
               </h3>
               <button
                 onClick={handleCloseModal}
@@ -246,35 +271,36 @@ export function InstructorCalendar({
               <div>
                 <p className="text-sm text-gray-500 mb-1">Date</p>
                 <p className="text-base font-medium text-gray-900">
-                  {formatDateFr(selectedSlot.date)}
+                  {formatDateFr(selectedSession.date)}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500 mb-1">Horaire</p>
                 <p className="text-base font-medium text-gray-900">
-                  {formatTime(selectedSlot.startTime)} - {formatTime(selectedSlot.endTime)}
+                  {formatTime(selectedSession.startTime)} - {formatTime(selectedSession.endTime)}
                 </p>
               </div>
 
               <div>
-                <p className="text-sm text-gray-500 mb-1">Statut</p>
-                <span
-                  className={`inline-block px-3 py-1 text-sm font-medium rounded-full ${
-                    selectedSlot.isAvailable
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {selectedSlot.isAvailable ? 'Disponible' : 'Indisponible'}
-                </span>
+                <p className="text-sm text-gray-500 mb-1">Lieu</p>
+                <p className="text-base font-medium text-gray-900">
+                  {selectedSession.location || 'Non défini'}
+                </p>
               </div>
 
-              {getReservationCount(selectedSlot) > 0 && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Capacité</p>
+                <p className="text-base font-medium text-gray-900">
+                  {selectedSession.maxStudents} élèves maximum
+                </p>
+              </div>
+
+              {getReservationCount(selectedSession) > 0 && (
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Réservations</p>
                   <p className="text-base font-medium text-gray-900">
-                    {getReservationCount(selectedSlot)} réservation(s) associée(s)
+                    {getReservationCount(selectedSession)} réservation(s)
                   </p>
                 </div>
               )}

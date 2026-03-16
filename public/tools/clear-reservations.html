@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🗑️ Supprimer les réservations</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 500px;
+      width: 100%;
+    }
+    h1 { color: #333; margin-bottom: 10px; font-size: 28px; }
+    p { color: #666; margin-bottom: 30px; line-height: 1.6; }
+    .btn-group { display: flex; flex-direction: column; gap: 10px; }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 12px;
+      font-weight: 500;
+      display: none;
+    }
+    .status.show { display: block; }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 2px solid #c3e6cb;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 2px solid #f5c6cb;
+    }
+    .status.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 2px solid #bee5eb;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 24px;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+      transition: text-decoration 0.2s;
+    }
+    .back-link:hover { text-decoration: underline; }
+    .count {
+      font-size: 48px;
+      font-weight: bold;
+      color: #667eea;
+      text-align: center;
+      margin: 20px 0;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🗑️ Gestion des réservations</h1>
+    <p>Gère les réservations des élèves dans la base de données.</p>
+    
+    <div class="count" id="countDisplay">-</div>
+    
+    <div class="btn-group">
+      <button id="refreshBtn" onclick="refreshCount()">
+        🔄 Actualiser le compteur
+      </button>
+      <button id="clearBtn" onclick="clearReservations()">
+        ❌ Supprimer TOUTES les réservations
+      </button>
+    </div>
+    
+    <div id="status" class="status"></div>
+    
+    <a href="/" class="back-link">← Retour à l'accueil</a>
+  </div>
+
+  <script type="module">
+    import { db } from '../src/db/db.ts';
+
+    window.refreshCount = async function() {
+      const countDisplay = document.getElementById('countDisplay');
+      const status = document.getElementById('status');
+      
+      countDisplay.textContent = '...';
+      status.className = 'status info show';
+      status.textContent = 'Chargement...';
+      
+      try {
+        const count = await db.reservations.count();
+        countDisplay.textContent = count;
+        
+        if (count === 0) {
+          status.className = 'status info show';
+          status.textContent = 'ℹ️ Aucune réservation en base';
+        } else {
+          status.className = 'status info show';
+          status.textContent = `📊 ${count} réservation(s) trouvée(s)`;
+        }
+      } catch (error) {
+        countDisplay.textContent = 'Erreur';
+        status.className = 'status error show';
+        status.textContent = `❌ Erreur: ${error.message}`;
+      }
+    };
+
+    window.clearReservations = async function() {
+      const btn = document.getElementById('clearBtn');
+      const status = document.getElementById('status');
+      const countDisplay = document.getElementById('countDisplay');
+      
+      if (!confirm('⚠️ Es-tu sûr de vouloir supprimer TOUTES les réservations ? Cette action est irréversible.')) {
+        return;
+      }
+      
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading"></span>Suppression...';
+      
+      try {
+        const count = await db.reservations.count();
+        
+        if (count === 0) {
+          status.className = 'status info show';
+          status.textContent = 'ℹ️ Aucune réservation à supprimer';
+          btn.disabled = false;
+          btn.textContent = '❌ Supprimer TOUTES les réservations';
+          return;
+        }
+        
+        await db.reservations.clear();
+        
+        const remaining = await db.reservations.count();
+        countDisplay.textContent = remaining;
+        
+        status.className = 'status success show';
+        status.innerHTML = `
+          ✅ <strong>${count}</strong> réservation(s) supprimée(s) !<br>
+          Il reste <strong>${remaining}</strong> réservation(s) en base.
+        `;
+        
+        btn.textContent = '✅ Réservations supprimées';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = '❌ Supprimer TOUTES les réservations';
+        }, 3000);
+      } catch (error) {
+        status.className = 'status error show';
+        status.innerHTML = `
+          ❌ Erreur lors de la suppression<br>
+          <code>${error.message}</code>
+        `;
+        btn.disabled = false;
+        btn.textContent = '❌ Supprimer TOUTES les réservations';
+      }
+    };
+
+    // Auto-refresh on load
+    refreshCount();
+  </script>
+</body>
+</html>

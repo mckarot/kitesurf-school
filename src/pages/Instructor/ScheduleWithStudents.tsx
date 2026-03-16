@@ -1,12 +1,13 @@
 // src/pages/Instructor/ScheduleWithStudents.tsx
 
-import type { TimeSlot, Reservation, User, Course } from '../../types';
+import type { TimeSlot, Reservation, User, Course, CourseSession } from '../../types';
 
 interface ScheduleWithStudentsProps {
   timeSlots: TimeSlot[];
   reservations: Reservation[];
   students: User[];
   courses: Course[];
+  courseSessions?: CourseSession[];
 }
 
 /**
@@ -36,6 +37,7 @@ export function ScheduleWithStudents({
   reservations,
   students,
   courses,
+  courseSessions = [],
 }: ScheduleWithStudentsProps) {
   // Trier les créneaux par date et heure
   const sortedTimeSlots = [...timeSlots].sort((a, b) => {
@@ -44,23 +46,37 @@ export function ScheduleWithStudents({
     return dateA - dateB;
   });
 
-  // Mapper les réservations par timeSlotId (si disponible) ou par courseId
+  // Mapper les réservations par timeSlot en faisant correspondre date + horaire avec les courseSessions
   const getStudentsForTimeSlot = (timeSlot: TimeSlot): User[] => {
-    // Cette logique dépend de la structure des données
-    // Ici, on suppose qu'on peut lier les réservations aux timeSlots via courseId
-    const courseForTimeSlot = courses.find((c) => c.instructorId === timeSlot.instructorId);
-    
-    if (!courseForTimeSlot) {
-      return [];
+    // Trouver les sessions de cours qui correspondent à ce créneau (même date et horaire)
+    const matchingSessions = courseSessions.filter(
+      (session) =>
+        session.date === timeSlot.date &&
+        session.startTime === timeSlot.startTime &&
+        session.endTime === timeSlot.endTime
+    );
+
+    if (matchingSessions.length === 0) {
+      // Si aucune session ne correspond, essayer de trouver par cours du moniteur
+      const courseForInstructor = courses.find((c) => c.instructorId === timeSlot.instructorId);
+      if (!courseForInstructor) return [];
+      
+      const courseReservations = reservations.filter(
+        (r) => r.courseId === courseForInstructor.id && r.status !== 'cancelled'
+      );
+      
+      return courseReservations
+        .map((r) => students.find((s) => s.id === r.studentId))
+        .filter((s): s is User => s !== undefined);
     }
 
-    // Trouver les réservations pour ce cours
-    const courseReservations = reservations.filter(
-      (r) => r.courseId === courseForTimeSlot.id && r.status !== 'cancelled'
+    // Trouver les réservations pour ces sessions (courseId dans reservation = sessionId)
+    const sessionReservations = reservations.filter(
+      (r) => matchingSessions.some((s) => s.id === r.courseId) && r.status !== 'cancelled'
     );
 
     // Mapper les IDs d'étudiants vers les objets User
-    return courseReservations
+    return sessionReservations
       .map((r) => students.find((s) => s.id === r.studentId))
       .filter((s): s is User => s !== undefined);
   };
