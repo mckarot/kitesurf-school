@@ -119,51 +119,6 @@ export function CreditsPage() {
     setRefreshKey(prev => prev + 1); // Force le rafraîchissement des données
   };
 
-  // Fonction pour migrer la base de données vers v13
-  const handleMigrateDB = async () => {
-    if (!confirm('⚠️ Cette action va supprimer la base de données et recréer toutes les tables.\n\nLes données existantes (utilisateurs, cours, réservations) seront conservées car la migration v13 les préserve.\n\nContinuer ?')) {
-      return;
-    }
-
-    try {
-      console.log('🔄 Démarrage migration v13...');
-      
-      // Fermer la connexion Dexie (synchrone)
-      db.close();
-      console.log('✅ Connexion DB fermée');
-      
-      // Attendre un peu pour s'assurer que tout est fermé
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Supprimer l'ancienne DB
-      console.log('🗑️ Suppression de l\'ancienne DB...');
-      await new Promise<void>((resolve, reject) => {
-        const deleteRequest = indexedDB.deleteDatabase('KiteSurfSchoolDB');
-        deleteRequest.onsuccess = () => {
-          console.log('✅ DB supprimée avec succès');
-          resolve();
-        };
-        deleteRequest.onerror = (event) => {
-          console.error('❌ Erreur suppression DB:', event);
-          reject(new Error('Failed to delete database'));
-        };
-        deleteRequest.onblocked = () => {
-          console.warn('⚠️ DB toujours utilisée, impossible de supprimer');
-          reject(new Error('Database is still in use. Please close all tabs and try again.'));
-        };
-      });
-
-      // Recharger la page pour recréer la DB avec v13
-      console.log('🔄 Rechargement de la page...');
-      alert('✅ Base de données supprimée ! La page va se recharger pour initialiser la version 13 avec les tables userWallets et coursePricing.');
-      window.location.reload();
-    } catch (error) {
-      console.error('[handleMigrateDB] Error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      alert('❌ Erreur lors de la migration: ' + errorMessage + '\n\nConseil: Ferme tous les onglets de l\'application et réessaie.');
-    }
-  };
-
   return (
     <CreditsErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-blue-50">
@@ -262,35 +217,21 @@ export function CreditsPage() {
             transition={{ delay: 0.25, duration: 0.5 }}
             className="mb-6 rounded-xl bg-blue-50 border border-blue-200 p-4"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-start gap-3 flex-1">
-                <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="text-sm text-blue-800">
-                  <p className="font-semibold mb-1">Système de paiement en euros</p>
-                  <p>
-                    Les élèves utilisent leur solde en euros pour réserver des cours. 
-                    Pour gérer les tarifs, allez dans{' '}
-                    <a href="/admin/pricing" className="underline hover:text-blue-900 font-medium">
-                      Gestion des tarifs
-                    </a>
-                    .
-                  </p>
-                </div>
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-sm text-blue-800">
+                <p className="font-semibold mb-1">Système de paiement en euros</p>
+                <p>
+                  Les élèves utilisent leur solde en euros pour réserver des cours. 
+                  Pour gérer les tarifs, allez dans{' '}
+                  <a href="/admin/pricing" className="underline hover:text-blue-900 font-medium">
+                    Gestion des tarifs
+                  </a>
+                  .
+                </p>
               </div>
-              <button
-                onClick={handleMigrateDB}
-                className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
-                title="Réinitialiser la base de données avec la version 13"
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Migrer vers v13
-                </span>
-              </button>
             </div>
           </motion.div>
 
