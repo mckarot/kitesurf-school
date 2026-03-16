@@ -8,6 +8,7 @@ import { useCourses } from '../../hooks/useCourses';
 import { useReservations } from '../../hooks/useReservations';
 import { useStudentBalance } from '../../hooks/useStudentBalance';
 import { createReservationWithCredit } from '../../utils/createReservationWithCredit';
+import { refreshCourseSessions } from '../../utils/generateCourseSessions';
 import { Button } from '../../components/ui/Button';
 import { Card, CardBody } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -39,6 +40,14 @@ export function StudentPage() {
       navigate('/dashboard');
     }
   }, [user, authLoading, navigate]);
+
+  // Générer les sessions pour les 30 prochains jours au chargement
+  useEffect(() => {
+    if (!authLoading && user) {
+      console.log('[StudentPage] Génération des sessions...');
+      refreshCourseSessions();
+    }
+  }, [authLoading, user]);
 
   const handleReserveClick = (course: { id: number; title: string; price: number }) => {
     setSelectedCourse(course);

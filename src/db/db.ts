@@ -164,6 +164,22 @@ export class KiteSurfDB extends Dexie {
       courseCredits: '++id, studentId, [studentId+status], status, createdAt',
       notifications: '++id, userId, [userId+read], type, createdAt',
     });
+
+    // Version 12: Add composite index [courseId+date+startTime] on courseSessions
+    // Required by generateCourseSessions to check for existing sessions
+    this.version(12).stores({
+      users: '++id, email, role, isActive, createdAt',
+      courses: '++id, instructorId, level, isActive, createdAt',
+      reservations: '++id, studentId, courseId, status, createdAt',
+      courseSessions: '++id, courseId, isActive, createdAt, [courseId+date+startTime]',
+      timeSlots: '++id, instructorId, date, isAvailable, createdAt',
+      userPhysicalData: '++id, userId',
+      userHealthData: '++id, userId',
+      userProgression: '++id, userId',
+      transactions: '++id, userId, reservationId, status, createdAt',
+      courseCredits: '++id, studentId, [studentId+status], status, createdAt',
+      notifications: '++id, userId, [userId+read], type, createdAt',
+    });
   }
 }
 

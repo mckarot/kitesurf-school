@@ -2,6 +2,7 @@
 // Modal de réservation de cours avec calendrier et créneaux
 
 import { useState, useEffect, useRef } from 'react';
+import { db } from '../../db/db';
 import { Button } from '../../components/ui/Button';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { TimeSlotPicker } from '../../components/TimeSlotPicker';
@@ -74,27 +75,36 @@ export function BookCourseModal({
     setIsConfirming(true);
 
     try {
-      console.log('[BookCourseModal] Confirmation de réservation:', {
-        date: selectedDate,
-        startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime,
-        courseTitle,
+      // TROUVER la vraie session dans la BDD
+      const allSessions = await db.courseSessions.toArray();
+      
+      console.log('[BookCourseModal] Toutes les sessions en BDD:', allSessions.map(s => ({
+        id: s.id,
+        courseId: s.courseId,
+        date: s.date,
+        time: s.startTime + '-' + s.endTime,
+      })));
+      
+      const matchingSession = allSessions.find(s => 
+        s.date === selectedDate &&
+        s.startTime === selectedSlot.startTime &&
+        s.endTime === selectedSlot.endTime &&
+        s.isActive === 1
+      );
+
+      console.log('[BookCourseModal] Session recherchée:', {
+        selectedDate,
+        selectedSlot,
+        found: !!matchingSession,
       });
 
-      // Create a mock session object (will be replaced with real data)
-      const session: CourseSession = {
-        id: Date.now(),
-        courseId: 0, // Will be set by parent
-        date: selectedDate,
-        startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime,
-        location: 'À définir',
-        maxStudents: 10,
-        isActive: 1,
-        createdAt: Date.now(),
-      };
+      if (!matchingSession) {
+        throw new Error('Créneau non disponible');
+      }
 
-      await onConfirm(session);
+      console.log('[BookCourseModal] Vraie session trouvée:', matchingSession);
+
+      await onConfirm(matchingSession);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la réservation');
