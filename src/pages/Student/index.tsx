@@ -234,7 +234,7 @@ export function StudentPage() {
                     'particulier': 'particulier',
                     'duo': 'duo',
                   };
-                  
+
                   // Déterminer le type de cours basé sur le titre ou le prix
                   let pricingType: CoursePricing['courseType'] = 'collectif';
                   if (course.title.toLowerCase().includes('particulier')) {
@@ -242,11 +242,17 @@ export function StudentPage() {
                   } else if (course.title.toLowerCase().includes('duo')) {
                     pricingType = 'duo';
                   }
-                  
+
                   // Récupérer le tarif depuis la DB
                   const pricing = prices.find(p => p.courseType === pricingType && p.isActive === 1);
                   const price = pricing?.price ?? course.price;
                   const pricingId = pricing?.id;
+
+                  // Skip this course if pricing is not found
+                  if (!pricingId) {
+                    console.warn('[StudentPage] Pricing not found for course:', course.id, pricingType);
+                    return null;
+                  }
                   
                   const hasSufficientBalance = canAffordCourse(price);
                   

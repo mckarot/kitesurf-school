@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Navigate, Link } from 'react-router-dom';
+import { DebugDBReset } from '../../components/DebugDBReset';
 import {
   Users,
   Calendar,
@@ -412,6 +413,9 @@ export function DashboardPage() {
           </motion.div>
         )}
       </main>
+
+      {/* Debug DB Reset - Only visible in development */}
+      {import.meta.env.DEV && <DebugDBReset />}
     </div>
   );
 }

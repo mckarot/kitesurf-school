@@ -167,6 +167,10 @@ export class KiteSurfDB extends Dexie {
       userProgression: '++id, userId',
       transactions: '++id, userId, reservationId, status, createdAt',
       courseCredits: '++id, studentId, [studentId+status], status, createdAt',
+      deletionRequests: '++id, userId, status, requestedAt, confirmationToken',
+      userConsents: '++id, userId, consentType, status, [userId+consentType]',
+      schoolSchedule: '++id, dayOfWeek, isActive, createdAt',
+      instructorAvailability: '++id, [instructorId+date+scheduleId], instructorId, date, isAvailable, createdAt',
       notifications: '++id, userId, [userId+read], type, createdAt',
     });
 
@@ -183,6 +187,10 @@ export class KiteSurfDB extends Dexie {
       userProgression: '++id, userId',
       transactions: '++id, userId, reservationId, status, createdAt',
       courseCredits: '++id, studentId, [studentId+status], status, createdAt',
+      deletionRequests: '++id, userId, status, requestedAt, confirmationToken',
+      userConsents: '++id, userId, consentType, status, [userId+consentType]',
+      schoolSchedule: '++id, dayOfWeek, isActive, createdAt',
+      instructorAvailability: '++id, [instructorId+date+scheduleId], instructorId, date, isAvailable, createdAt',
       notifications: '++id, userId, [userId+read], type, createdAt',
     });
 

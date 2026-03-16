@@ -3,7 +3,7 @@
 // Ajout de réservations pending et notifications pour tester la validation
 
 import { db } from '../db/db';
-import type { User, Course, Reservation, CourseSession, TimeSlot, UserConsent, CourseCredit, SchoolSchedule, Notification } from '../types';
+import type { User, Course, Reservation, CourseSession, TimeSlot, UserConsent, CourseCredit, SchoolSchedule, Notification, UserWallet, CoursePricing } from '../types';
 
 export async function seedDatabase(): Promise<void> {
   const userCount = await db.users.count();
@@ -551,6 +551,105 @@ export async function seedDatabase(): Promise<void> {
     },
   ];
 
+  // ============================================
+  // UserWallets - Portefeuilles pour les utilisateurs
+  // ============================================
+  const userWallets: UserWallet[] = [
+    {
+      id: 1,
+      userId: 1, // Admin
+      balance: 1000,
+      createdAt: Date.now(),
+    },
+    {
+      id: 2,
+      userId: 2, // Instructor
+      balance: 500,
+      createdAt: Date.now(),
+    },
+    {
+      id: 3,
+      userId: 3, // Alice (student)
+      balance: 370, // Assez pour plusieurs cours
+      createdAt: Date.now(),
+    },
+    {
+      id: 4,
+      userId: 4, // Bob (student)
+      balance: 200, // Assez pour un pack découverte
+      createdAt: Date.now(),
+    },
+  ];
+
+  // ============================================
+  // CoursePricing - Tarifs des cours
+  // ============================================
+  const coursePricing: CoursePricing[] = [
+    {
+      id: 1,
+      courseType: 'collectif',
+      price: 70,
+      duration: '2h30',
+      maxStudents: 6,
+      description: 'Cours collectif en groupe (max 6 personnes)',
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+    {
+      id: 2,
+      courseType: 'particulier',
+      price: 120,
+      duration: '2h30',
+      maxStudents: 1,
+      description: 'Cours particulier avec moniteur dédié',
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+    {
+      id: 3,
+      courseType: 'duo',
+      price: 95,
+      duration: '2h30',
+      maxStudents: 2,
+      description: 'Cours en duo (2 personnes maximum)',
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+    {
+      id: 4,
+      courseType: 'pack_3',
+      price: 180,
+      sessions: 3,
+      duration: '2h30',
+      maxStudents: 6,
+      description: 'Pack de 3 séances (économisez 30€)',
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+    {
+      id: 5,
+      courseType: 'pack_6',
+      price: 330,
+      sessions: 6,
+      duration: '2h30',
+      maxStudents: 6,
+      description: 'Pack de 6 séances (économisez 90€)',
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+    {
+      id: 6,
+      courseType: 'pack_10',
+      price: 500,
+      sessions: 10,
+      duration: '2h30',
+      maxStudents: 6,
+      description: 'Pack de 10 séances (économisez 200€)',
+      isActive: 1,
+      createdAt: Date.now(),
+    },
+  ];
+
   await db.users.bulkAdd(users);
   await db.courses.bulkAdd(courses);
   await db.courseSessions.bulkAdd(courseSessions);
@@ -560,9 +659,13 @@ export async function seedDatabase(): Promise<void> {
   await db.courseCredits.bulkAdd(courseCredits);
   await db.userConsents.bulkAdd(userConsents);
   await db.notifications.bulkAdd(notifications);
+  await db.userWallets.bulkAdd(userWallets);
+  await db.coursePricing.bulkAdd(coursePricing);
 
   console.log('Database seeded successfully!');
   console.log(`Initialized ${schoolSchedules.length} default school schedules`);
   console.log(`Created ${notifications.length} test notifications`);
   console.log(`Created ${reservations.filter(r => r.status === 'pending').length} pending reservations for testing`);
+  console.log(`Initialized ${userWallets.length} user wallets`);
+  console.log(`Initialized ${coursePricing.length} course pricing options`);
 }
