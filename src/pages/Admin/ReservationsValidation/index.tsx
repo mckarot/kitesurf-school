@@ -1,29 +1,51 @@
 // src/pages/Admin/ReservationsValidation/index.tsx
+// Page Admin - Validation des réservations
+// Design Metalab harmonisé avec le reste du site
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { db } from '../../../db/db';
 import { useAuth } from '../../../hooks/useAuth';
-import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
-import { Card, CardBody } from '../../../components/ui/Card';
 import type { Reservation, User, Course, CourseSession } from '../../../types';
 import { notifyReservationConfirmed } from '../../../utils/notifications';
 import { cancelReservationWithRefund } from '../../../utils/cancelReservationWithRefund';
-import { CheckCircle, XCircle, Clock, User as UserIcon, Calendar, AlertCircle } from 'lucide-react';
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  Calendar,
+  Users,
+  TrendingUp,
+  AlertCircle,
+  UserCheck,
+  RefreshCcw
+} from 'lucide-react';
+
+interface EnrichedReservation extends Reservation {
+  student?: User;
+  course?: Course;
+  session?: CourseSession;
+}
 
 export function AdminReservationsValidationPage() {
-  const { user } = useAuth();
-  const [pendingReservations, setPendingReservations] = useState<Array<Reservation & {
-    student?: User;
-    course?: Course;
-    session?: CourseSession;
-  }>>([]);
+  const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
+  const [pendingReservations, setPendingReservations] = useState<EnrichedReservation[]>([]);
   const [instructors, setInstructors] = useState<User[]>([]);
   const [selectedInstructor, setSelectedInstructor] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
+  const [expandedReservationId, setExpandedReservationId] = useState<number | null>(null);
+
+  // Vérifier l'authentification
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== 'admin')) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   // Charger les réservations en attente et les moniteurs
   useEffect(() => {
@@ -64,7 +86,7 @@ export function AdminReservationsValidationPage() {
   // Confirmer une réservation avec assignation de moniteur
   const handleConfirm = async (reservationId: number) => {
     const instructorId = selectedInstructor[reservationId];
-    
+
     if (!instructorId) {
       alert('Veuillez sélectionner un moniteur pour cette réservation');
       return;
@@ -101,7 +123,7 @@ export function AdminReservationsValidationPage() {
               month: 'long',
               day: 'numeric'
             }),
-            instructor?.firstName && instructor.lastName 
+            instructor?.firstName && instructor.lastName
               ? `${instructor.firstName} ${instructor.lastName}`
               : undefined
           );
@@ -110,6 +132,7 @@ export function AdminReservationsValidationPage() {
 
       // Retirer de la liste
       setPendingReservations(prev => prev.filter(r => r.id !== reservationId));
+      setExpandedReservationId(null);
     } catch (error) {
       console.error('Error confirming reservation:', error);
       alert('Erreur lors de la confirmation');
@@ -136,7 +159,8 @@ export function AdminReservationsValidationPage() {
 
       // Retirer de la liste
       setPendingReservations(prev => prev.filter(r => r.id !== reservationId));
-      
+      setExpandedReservationId(null);
+
       alert('✅ Réservation annulée et séances recréditées');
     } catch (error) {
       console.error('Error cancelling reservation:', error);
@@ -146,56 +170,166 @@ export function AdminReservationsValidationPage() {
     }
   };
 
-  if (isLoading) {
+  // Toggle expand/collapse
+  const toggleExpand = (reservationId: number) => {
+    setExpandedReservationId(expandedReservationId === reservationId ? null : reservationId);
+  };
+
+  if (authLoading || (isLoading && pendingReservations.length === 0)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 flex items-center justify-center">
-        <LoadingSpinner size="lg" color="blue" showLabel label="Chargement des réservations..." />
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-100 flex items-center justify-center">
+        <div aria-busy="true" aria-live="polite" className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-orange-600 mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Chargement des réservations...</p>
+        </div>
       </div>
     );
   }
 
+  if (!user || user.role !== 'admin') {
+    return null;
+  }
+
+  const stats = {
+    total: pendingReservations.length,
+    today: pendingReservations.filter(r => {
+      const today = new Date().toDateString();
+      return r.session?.date && new Date(r.session.date).toDateString() === today;
+    }).length,
+    thisWeek: pendingReservations.filter(r => {
+      if (!r.session?.date) return false;
+      const now = new Date();
+      const reservationDate = new Date(r.session.date);
+      const diffTime = Math.abs(reservationDate.getTime() - now.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays <= 7;
+    }).length,
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-red-50 to-pink-100">
       {/* Hero Header */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 text-white"
+        className="bg-gradient-to-br from-orange-600 via-red-600 to-pink-600 text-white"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-between">
-            <div>
-              <motion.div
+            <div className="flex items-center space-x-4">
+              <motion.button
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="flex items-center space-x-3 mb-3"
+                transition={{ delay: 0.2, duration: 0.4 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => window.history.back()}
+                className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-white/30 transition-all"
+                aria-label="Retour"
               >
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-white" />
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold">Réservations en Attente</h1>
-              </motion.div>
-              <motion.p
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-                className="text-blue-100 text-lg"
-              >
-                Confirmez les réservations et assignez les moniteurs
-              </motion.p>
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </motion.button>
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3, duration: 0.6 }}
+                  className="text-4xl md:text-5xl font-bold"
+                >
+                  Réservations
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="text-orange-100 text-lg mt-2"
+                >
+                  Validez et assignez les moniteurs
+                </motion.p>
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-5xl font-bold">{pendingReservations.length}</div>
-              <div className="text-blue-100">en attente</div>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5, duration: 0.4 }}
+              className="text-right"
+            >
+              <div className="text-5xl font-bold">{stats.total}</div>
+              <div className="text-orange-100">en attente</div>
+            </motion.div>
           </div>
         </div>
       </motion.header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-8">
+        {/* Stats Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+        >
+          <div className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Total en attente</p>
+                <p className="text-4xl font-bold text-orange-600">{stats.total}</p>
+              </div>
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-400 rounded-2xl flex items-center justify-center">
+                <Clock className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-xl p-6 border border-blue-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Aujourd'hui</p>
+                <p className="text-4xl font-bold text-blue-600">{stats.today}</p>
+              </div>
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center">
+                <Calendar className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Cette semaine</p>
+                <p className="text-4xl font-bold text-purple-600">{stats.thisWeek}</p>
+              </div>
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-400 rounded-2xl flex items-center justify-center">
+                <TrendingUp className="w-8 h-8 text-white" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Info Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="mb-6 rounded-2xl bg-blue-50 border border-blue-200 p-4"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-semibold mb-1">Validation requise</p>
+              <p>
+                Chaque réservation doit être validée et un moniteur doit être assigné avant confirmation.
+                Une notification sera envoyée à l'élève après validation.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Reservations List */}
         {pendingReservations.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -209,124 +343,155 @@ export function AdminReservationsValidationPage() {
             <p className="text-gray-600">Toutes les réservations ont été traitées</p>
           </motion.div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {pendingReservations.map((reservation, index) => (
               <motion.div
                 key={reservation.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1, duration: 0.5 }}
+                transition={{ delay: index * 0.05, duration: 0.4 }}
               >
-                <Card variant="elevated" className="overflow-hidden rounded-3xl">
-                  <CardBody className="p-6">
-                    {/* Header de la carte */}
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
-                          {reservation.student?.firstName?.[0]}{reservation.student?.lastName?.[0]}
+                <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all">
+                  {/* Header de la carte */}
+                  <div
+                    className="p-6 cursor-pointer"
+                    onClick={() => toggleExpand(reservation.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-400 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                          {reservation.student?.firstName?.[0] || '?'}{reservation.student?.lastName?.[0] || '?'}
                         </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-bold text-gray-900 truncate">
                             {reservation.student?.firstName} {reservation.student?.lastName}
                           </h3>
-                          <p className="text-gray-600">{reservation.student?.email}</p>
+                          <p className="text-sm text-gray-600 truncate">{reservation.student?.email}</p>
                           <div className="flex items-center space-x-2 mt-2">
-                            <Badge variant="warning" className="flex items-center space-x-1">
+                            <Badge variant="warning" className="flex items-center space-x-1 text-xs">
                               <Clock className="w-3 h-3" />
                               <span>En attente</span>
                             </Badge>
-                            <Badge variant="info">
+                            <span className="text-xs text-gray-500">
                               {new Date(reservation.createdAt).toLocaleDateString('fr-FR')}
-                            </Badge>
+                            </span>
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-blue-600">{reservation.course?.price || 0}€</div>
-                        <div className="text-gray-600 text-sm">1 séance</div>
-                      </div>
-                    </div>
-
-                    {/* Détails du cours */}
-                    <div className="bg-gray-50 rounded-2xl p-4 mb-6">
-                      <h4 className="font-bold text-gray-900 mb-3 flex items-center">
-                        <Calendar className="w-5 h-5 text-blue-600 mr-2" />
-                        Détails de la réservation
-                      </h4>
-                      <div className="grid md:grid-cols-3 gap-4">
-                        <div>
-                          <div className="text-sm text-gray-600">Cours</div>
-                          <div className="font-semibold text-gray-900">{reservation.course?.title || 'N/A'}</div>
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-orange-600">{reservation.course?.price || 0}€</div>
+                          <div className="text-gray-600 text-sm">1 séance</div>
                         </div>
-                        <div>
-                          <div className="text-sm text-gray-600">Date</div>
-                          <div className="font-semibold text-gray-900">
-                            {reservation.session?.date 
-                              ? new Date(reservation.session.date).toLocaleDateString('fr-FR', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })
-                              : 'N/A'}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-gray-600">Horaires</div>
-                          <div className="font-semibold text-gray-900">
-                            {reservation.session?.startTime || 'N/A'} - {reservation.session?.endTime || 'N/A'}
-                          </div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
+                          expandedReservationId === reservation.id ? 'rotate-180' : ''
+                        }`}>
+                          <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Sélection du moniteur */}
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                        <UserIcon className="w-4 h-4 mr-2" />
-                        Assigner un moniteur
-                      </label>
-                      <select
-                        value={selectedInstructor[reservation.id] || ''}
-                        onChange={(e) => setSelectedInstructor(prev => ({
-                          ...prev,
-                          [reservation.id]: parseInt(e.target.value, 10)
-                        }))}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                      >
-                        <option value="">Sélectionner un moniteur...</option>
-                        {instructors.map(instructor => (
-                          <option key={instructor.id} value={instructor.id}>
-                            {instructor.firstName} {instructor.lastName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  {/* Contenu détaillé (expandable) */}
+                  {expandedReservationId === reservation.id && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="border-t border-gray-100"
+                    >
+                      <div className="p-6 space-y-6">
+                        {/* Détails du cours */}
+                        <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-4">
+                          <h4 className="font-bold text-gray-900 mb-3 flex items-center">
+                            <Calendar className="w-5 h-5 text-orange-600 mr-2" />
+                            Détails de la réservation
+                          </h4>
+                          <div className="grid md:grid-cols-3 gap-4">
+                            <div>
+                              <div className="text-sm text-gray-600">Cours</div>
+                              <div className="font-semibold text-gray-900">{reservation.course?.title || 'N/A'}</div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-600">Date</div>
+                              <div className="font-semibold text-gray-900">
+                                {reservation.session?.date
+                                  ? new Date(reservation.session.date).toLocaleDateString('fr-FR', {
+                                      weekday: 'long',
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })
+                                  : 'N/A'}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-sm text-gray-600">Horaires</div>
+                              <div className="font-semibold text-gray-900">
+                                {reservation.session?.startTime || 'N/A'} - {reservation.session?.endTime || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
 
-                    {/* Boutons d'action */}
-                    <div className="flex space-x-4">
-                      <Button
-                        variant="primary"
-                        onClick={() => handleConfirm(reservation.id)}
-                        isLoading={isProcessing === reservation.id}
-                        disabled={!selectedInstructor[reservation.id]}
-                        className="flex-1 flex items-center justify-center space-x-2"
-                      >
-                        <CheckCircle className="w-5 h-5" />
-                        <span>Confirmer</span>
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => handleCancel(reservation.id)}
-                        isLoading={isProcessing === reservation.id}
-                        className="flex-1 flex items-center justify-center space-x-2 bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
-                      >
-                        <XCircle className="w-5 h-5" />
-                        <span>Annuler</span>
-                      </Button>
-                    </div>
-                  </CardBody>
-                </Card>
+                        {/* Sélection du moniteur */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                            <UserCheck className="w-4 h-4 mr-2" />
+                            Assigner un moniteur
+                          </label>
+                          <select
+                            value={selectedInstructor[reservation.id] || ''}
+                            onChange={(e) => setSelectedInstructor(prev => ({
+                              ...prev,
+                              [reservation.id]: parseInt(e.target.value, 10)
+                            }))}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all bg-white"
+                          >
+                            <option value="">Sélectionner un moniteur...</option>
+                            {instructors.map(instructor => (
+                              <option key={instructor.id} value={instructor.id}>
+                                {instructor.firstName} {instructor.lastName}
+                              </option>
+                            ))}
+                          </select>
+                          {!selectedInstructor[reservation.id] && (
+                            <p className="text-xs text-orange-600 mt-2 flex items-center">
+                              <AlertCircle className="w-3 h-3 mr-1" />
+                              <span>La sélection d'un moniteur est requise pour confirmer</span>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Boutons d'action */}
+                        <div className="flex space-x-4 pt-4 border-t border-gray-200">
+                          <Button
+                            variant="primary"
+                            onClick={() => handleConfirm(reservation.id)}
+                            isLoading={isProcessing === reservation.id}
+                            disabled={!selectedInstructor[reservation.id]}
+                            className="flex-1 flex items-center justify-center space-x-2"
+                          >
+                            <CheckCircle className="w-5 h-5" />
+                            <span>Confirmer</span>
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleCancel(reservation.id)}
+                            isLoading={isProcessing === reservation.id}
+                            className="flex-1 flex items-center justify-center space-x-2 bg-red-50 hover:bg-red-100 text-red-600 border-red-200"
+                          >
+                            <XCircle className="w-5 h-5" />
+                            <span>Annuler</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
               </motion.div>
             ))}
           </div>
@@ -335,3 +500,5 @@ export function AdminReservationsValidationPage() {
     </div>
   );
 }
+
+export default AdminReservationsValidationPage;

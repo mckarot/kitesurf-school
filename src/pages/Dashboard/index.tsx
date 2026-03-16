@@ -221,7 +221,7 @@ export function DashboardPage() {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
             >
               {/* Réservations en attente */}
-              <Link to="/admin/reservations-validation">
+              <Link to="/admin/reservations-validation" className="block">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100 cursor-pointer hover:shadow-2xl transition-all"

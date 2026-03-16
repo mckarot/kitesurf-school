@@ -172,11 +172,8 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin/reservations-validation',
-    element: <MainLayout requireAuth={true} allowedRoles={['admin']} />,
+    element: <AdminReservationsValidationPage />,
     errorElement: <ErrorBoundary><div /></ErrorBoundary>,
-    children: [
-      { index: true, element: <AdminReservationsValidationPage /> },
-    ],
   },
   {
     path: '/instructor',
