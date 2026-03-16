@@ -9,15 +9,14 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Navigate } from 'react-router-dom';
-import { 
-  Users, 
-  Calendar, 
-  Award, 
-  Settings, 
-  BookOpen, 
-  Clock, 
-  RefreshCcw,
+import { Navigate, Link } from 'react-router-dom';
+import {
+  Users,
+  Calendar,
+  Award,
+  Settings,
+  BookOpen,
+  Clock,
   TrendingUp,
   CheckCircle,
   UserCheck
@@ -58,39 +57,6 @@ export function DashboardPage() {
 
   const activeCourses = courses.filter((c) => c.isActive === 1);
   const activeReservations = reservations.filter((r) => r.status !== 'cancelled');
-
-  const handleResetDatabase = async () => {
-    if (!confirm('⚠️ Attention !\n\nCette action va supprimer toutes les données de la base.\n\nÊtes-vous sûr de vouloir continuer ?')) {
-      return;
-    }
-
-    try {
-      console.log('🔄 Réinitialisation en cours...');
-
-      await new Promise((resolve, reject) => {
-        const request = indexedDB.deleteDatabase('KiteSurfSchoolDB');
-        request.onsuccess = resolve;
-        request.onerror = reject;
-        request.onblocked = () => reject(new Error('Base verrouillée'));
-      });
-
-      console.log('✅ Base de données supprimée !');
-      console.log('📥 Rechargement des données de seed...');
-      console.log('');
-      console.log('📚 Comptes de test:');
-      console.log('   Admin:     admin@kiteschool.com / admin123');
-      console.log('   Moniteur:  instructor@kiteschool.com / instructor123');
-      console.log('   Étudiant:  student@kiteschool.com / student123');
-      console.log('');
-
-      alert('✅ Base de données réinitialisée avec succès !\n\nLes données de test vont être rechargées.');
-      window.location.reload();
-
-    } catch (error) {
-      console.error('❌ Erreur:', error);
-      alert('❌ Erreur lors de la réinitialisation:\n' + (error as Error).message);
-    }
-  };
 
   const roleColors = {
     admin: 'from-red-500 to-pink-500',
@@ -234,25 +200,17 @@ export function DashboardPage() {
         {/* Admin Section */}
         {user.role === 'admin' && (
           <>
-            {/* Bouton Reset + Réservations en attente */}
+            {/* Réservations en attente */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              className="flex items-center justify-between mb-6"
+              className="mb-6"
             >
               <div className="flex items-center space-x-2">
                 <Settings className="w-6 h-6 text-blue-600" />
                 <h2 className="text-2xl font-bold text-gray-900">Administration</h2>
               </div>
-              <button
-                onClick={handleResetDatabase}
-                className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-full hover:bg-red-700 transition-all font-medium text-sm shadow-lg hover:shadow-xl"
-                title="Réinitialiser la base de données"
-              >
-                <RefreshCcw className="w-4 h-4" />
-                <span>Réinitialiser la base</span>
-              </button>
             </motion.div>
 
             {/* Admin Cards */}
@@ -263,7 +221,7 @@ export function DashboardPage() {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
             >
               {/* Réservations en attente */}
-              <a href="/admin/reservations-validation" className="block">
+              <Link to="/admin/reservations-validation">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-orange-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -281,10 +239,10 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Réservations</h3>
                   <p className="text-sm text-gray-600">Valider et assigner</p>
                 </motion.div>
-              </a>
+              </Link>
 
               {/* Gestion des crédits */}
-              <a href="/admin/credits" className="block">
+              <Link to="/admin/credits">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -297,10 +255,10 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Crédits</h3>
                   <p className="text-sm text-gray-600">Gérer les séances</p>
                 </motion.div>
-              </a>
+              </Link>
 
               {/* Gestion des utilisateurs */}
-              <a href="/admin" className="block">
+              <Link to="/admin">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-blue-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -313,10 +271,10 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Utilisateurs</h3>
                   <p className="text-sm text-gray-600">Administrer les comptes</p>
                 </motion.div>
-              </a>
+              </Link>
 
               {/* Gestion des cours */}
-              <a href="/admin/courses" className="block">
+              <Link to="/admin">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-green-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -329,10 +287,10 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Cours</h3>
                   <p className="text-sm text-gray-600">Créer et modifier</p>
                 </motion.div>
-              </a>
+              </Link>
 
               {/* Emploi du temps */}
-              <a href="/admin/school-schedule" className="block">
+              <Link to="/admin/school-schedule">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-indigo-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -345,10 +303,10 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Emploi du temps</h3>
                   <p className="text-sm text-gray-600">Planning de l'école</p>
                 </motion.div>
-              </a>
+              </Link>
 
               {/* Statistiques */}
-              <a href="/admin/stats" className="block">
+              <Link to="/admin/stats">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-cyan-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -361,7 +319,7 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Statistiques</h3>
                   <p className="text-sm text-gray-600">Analyser les données</p>
                 </motion.div>
-              </a>
+              </Link>
             </motion.div>
           </>
         )}
@@ -378,7 +336,7 @@ export function DashboardPage() {
               <h2 className="text-2xl font-bold text-gray-900">Espace Élève</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <a href="/student" className="block">
+              <Link to="/student">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-blue-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -391,8 +349,8 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Réserver un cours</h3>
                   <p className="text-sm text-gray-600">Choisis ton créneau</p>
                 </motion.div>
-              </a>
-              <a href="/reservations" className="block">
+              </Link>
+              <Link to="/reservations">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-green-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -405,7 +363,7 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Mon historique</h3>
                   <p className="text-sm text-gray-600">Voir mes réservations</p>
                 </motion.div>
-              </a>
+              </Link>
             </div>
           </motion.div>
         )}
@@ -422,7 +380,7 @@ export function DashboardPage() {
               <h2 className="text-2xl font-bold text-gray-900">Espace Moniteur</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <a href="/instructor" className="block">
+              <Link to="/instructor">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-purple-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -435,8 +393,8 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Mes élèves</h3>
                   <p className="text-sm text-gray-600">Gérer les cours</p>
                 </motion.div>
-              </a>
-              <a href="/instructor/calendar" className="block">
+              </Link>
+              <Link to="/instructor/calendar">
                 <motion.div
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="bg-white rounded-3xl shadow-xl p-6 border border-indigo-100 cursor-pointer hover:shadow-2xl transition-all"
@@ -449,7 +407,7 @@ export function DashboardPage() {
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Calendrier</h3>
                   <p className="text-sm text-gray-600">Mon emploi du temps</p>
                 </motion.div>
-              </a>
+              </Link>
             </div>
           </motion.div>
         )}

@@ -71,7 +71,7 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Hook notifications - seulement pour les utilisateurs connectés
@@ -126,13 +126,15 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
 
   // Redirect to login if auth required and user not connected
   useEffect(() => {
+    if (isLoading) return; // Ne pas rediriger pendant le chargement
+    
     if (requireAuth && !user && !isRedirecting) {
       setIsRedirecting(true);
       navigate('/login', { state: { from: location.pathname }, replace: true });
     } else if (requireAuth && user && allowedRoles && !allowedRoles.includes(user.role)) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, requireAuth, allowedRoles, navigate, location.pathname, isRedirecting]);
+  }, [user, isLoading, requireAuth, allowedRoles, navigate, location.pathname, isRedirecting]);
 
   const handleLogout = () => {
     logout();
@@ -221,12 +223,6 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
                             {pendingReservationsCount > 9 ? '9+' : pendingReservationsCount}
                           </span>
                         )}
-                      </Link>
-                      <Link
-                        to="/admin/credits"
-                        className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
-                      >
-                        Crédits
                       </Link>
                     </>
                   )}
@@ -495,13 +491,6 @@ export function MainLayout({ requireAuth = false, allowedRoles }: MainLayoutProp
                             {pendingReservationsCount > 9 ? '9+' : pendingReservationsCount}
                           </span>
                         )}
-                      </Link>
-                      <Link
-                        to="/admin/credits"
-                        className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg"
-                      >
-                        <Calendar className="w-5 h-5" />
-                        <span className="font-medium">Crédits</span>
                       </Link>
                     </>
                   )}
