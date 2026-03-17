@@ -170,11 +170,16 @@ export function BookCourseModal({
                   <p className="text-sm text-gray-600 mt-1">
                     {selectedSlot ? (
                       <>
-                        {new Date(selectedDate).toLocaleDateString('fr-FR', {
-                          weekday: 'long',
-                          day: 'numeric',
-                          month: 'long'
-                        })}{' '}
+                        {(() => {
+                          // Parse date in local timezone to avoid off-by-one errors
+                          const [year, month, day] = selectedDate.split('-').map(Number);
+                          const dateObj = new Date(year, month - 1, day);
+                          return dateObj.toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long'
+                          });
+                        })()}{' '}
                         à {selectedSlot.startTime}
                       </>
                     ) : (

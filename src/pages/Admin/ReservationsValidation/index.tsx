@@ -117,12 +117,15 @@ export function AdminReservationsValidationPage() {
             reservation.studentId,
             reservationId,
             course.title,
-            new Date(session.date).toLocaleDateString('fr-FR', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            }),
+            (() => {
+              const [year, month, day] = session.date.split('-').map(Number);
+              return new Date(year, month - 1, day).toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+            })(),
             instructor?.firstName && instructor.lastName
               ? `${instructor.firstName} ${instructor.lastName}`
               : undefined
@@ -194,12 +197,16 @@ export function AdminReservationsValidationPage() {
     total: pendingReservations.length,
     today: pendingReservations.filter(r => {
       const today = new Date().toDateString();
-      return r.session?.date && new Date(r.session.date).toDateString() === today;
+      return r.session?.date && (() => {
+        const [year, month, day] = r.session.date.split('-').map(Number);
+        return new Date(year, month - 1, day).toDateString() === today;
+      })();
     }).length,
     thisWeek: pendingReservations.filter(r => {
       if (!r.session?.date) return false;
       const now = new Date();
-      const reservationDate = new Date(r.session.date);
+      const [year, month, day] = r.session.date.split('-').map(Number);
+      const reservationDate = new Date(year, month - 1, day);
       const diffTime = Math.abs(reservationDate.getTime() - now.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return diffDays <= 7;
@@ -419,12 +426,15 @@ export function AdminReservationsValidationPage() {
                               <div className="text-sm text-gray-600">Date</div>
                               <div className="font-semibold text-gray-900">
                                 {reservation.session?.date
-                                  ? new Date(reservation.session.date).toLocaleDateString('fr-FR', {
-                                      weekday: 'long',
-                                      year: 'numeric',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    })
+                                  ? (() => {
+                                      const [year, month, day] = reservation.session.date.split('-').map(Number);
+                                      return new Date(year, month - 1, day).toLocaleDateString('fr-FR', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                      });
+                                    })()
                                   : 'N/A'}
                               </div>
                             </div>
