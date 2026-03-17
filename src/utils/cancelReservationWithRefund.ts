@@ -1,18 +1,12 @@
 // src/utils/cancelReservationWithRefund.ts
-// Annule une réservation et recrédite les séances à l'élève
+// Annule une réservation et recrédite le wallet de l'élève (système v13 euros)
 
 import { db } from '../db/db';
 import { notifyReservationCancelled } from './notifications';
 
-interface CancelResult {
-  success: boolean;
-  error?: string;
-  reservation?: any;
-  sessionsConsumed?: number;
-}
-
 /**
- * Annule une réservation et recrédite les séances consommées
+ * Annule une réservation et recrédite le wallet de l'élève
+ * Système v13 : remboursement en euros, pas en séances
  *
  * @param reservationId - ID de la réservation à annuler
  * @returns Promise<{ success: boolean; error?: string }>
@@ -21,74 +15,78 @@ export async function cancelReservationWithRefund(
   reservationId: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Étape 0: Récupérer les données HORS transaction (évite NotFoundError)
+    const reservation = await db.reservations.get(reservationId);
+    
+    if (!reservation) {
+      return {
+        success: false,
+        error: 'Réservation introuvable'
+      };
+    }
+
+    // Déjà annulée ?
+    if (reservation.status === 'cancelled') {
+      return {
+        success: false,
+        error: 'Cette réservation est déjà annulée'
+      };
+    }
+
+    // IMPORTANT: reservation.courseId pointe vers une CourseSession, pas un Course !
+    const session = await db.courseSessions.get(reservation.courseId);
+    if (!session) {
+      return {
+        success: false,
+        error: 'Session non trouvée'
+      };
+    }
+
+    // Récupérer le cours pour avoir le titre
+    const course = await db.courses.get(session.courseId);
+    if (!course) {
+      return {
+        success: false,
+        error: 'Cours non trouvé'
+      };
+    }
+
     // Étape 1-3: Transaction pour annulation + remboursement
-    const result: CancelResult = await db.transaction('rw', db.reservations, db.courseCredits, async () => {
-      // Étape 1: Récupérer la réservation
-      const reservation = await db.reservations.get(reservationId);
-
-      if (!reservation) {
-        return {
-          success: false,
-          error: 'Réservation introuvable',
-          reservation: null,
-          sessionsConsumed: 0
-        };
-      }
-
-      // Déjà annulée ?
-      if (reservation.status === 'cancelled') {
-        return {
-          success: false,
-          error: 'Cette réservation est déjà annulée',
-          reservation: null,
-          sessionsConsumed: 0
-        };
-      }
-
-      const sessionsConsumed = reservation.sessionsConsumed || 1;
-
-      // Étape 2: Changer le statut
+    const result = await db.transaction('rw', db.reservations, db.userWallets, async () => {
+      // Étape 1: Changer le statut de la réservation
       await db.reservations.update(reservationId, {
         status: 'cancelled' as const,
       });
 
       console.log('[cancelReservationWithRefund] Réservation annulée:', reservationId);
 
-      // Étape 3: Recréditer les séances (remboursement)
-      const activeCredits = await db.courseCredits
-        .where('[studentId+status]')
-        .equals([reservation.studentId, 'active'])
-        .sortBy('createdAt');
-
-      let sessionsRemainingToRefund = sessionsConsumed;
-
-      for (const credit of activeCredits) {
-        if (sessionsRemainingToRefund <= 0) break;
-        if (credit.usedSessions <= 0) continue;
-
-        const sessionsToRefundFromThisCredit = Math.min(
-          credit.usedSessions,
-          sessionsRemainingToRefund
-        );
-
-        await db.courseCredits.update(credit.id, {
-          usedSessions: credit.usedSessions - sessionsToRefundFromThisCredit,
-          updatedAt: Date.now()
-        });
-
-        sessionsRemainingToRefund -= sessionsToRefundFromThisCredit;
-
-        console.log('[cancelReservationWithRefund] Remboursement:', {
-          creditId: credit.id,
-          sessionsRefunded: sessionsToRefundFromThisCredit,
-        });
+      // Étape 2: Rembourser le wallet de l'élève
+      const wallet = await db.userWallets.where('userId').equals(reservation.studentId).first();
+      
+      if (!wallet) {
+        console.error('[cancelReservationWithRefund] Wallet non trouvé pour userId:', reservation.studentId);
+        throw new Error('Portefeuille non trouvé');
       }
+
+      // Rembourser le prix du cours
+      const newBalance = wallet.balance + course.price;
+      await db.userWallets.update(wallet.id, {
+        balance: newBalance,
+        updatedAt: Date.now()
+      });
+
+      console.log('[cancelReservationWithRefund] Remboursement:', {
+        walletId: wallet.id,
+        amountRefunded: course.price,
+        oldBalance: wallet.balance,
+        newBalance: newBalance
+      });
 
       return {
         success: true,
         error: undefined,
-        reservation,
-        sessionsConsumed
+        coursePrice: course.price,
+        courseTitle: course.title
       };
     });
 
@@ -96,26 +94,21 @@ export async function cancelReservationWithRefund(
       return { success: false, error: result.error };
     }
 
-    // Étape 4: Notification (HORS transaction - évite les erreurs NotFoundError)
+    // Étape 3: Notification (HORS transaction)
     try {
-      const student = await db.users.get(result.reservation!.studentId);
-      const course = await db.courses.get(result.reservation!.courseId);
-      
-      if (student && course) {
-        await notifyReservationCancelled(
-          result.reservation!.studentId,
-          reservationId,
-          course.title,
-          `${result.sessionsConsumed!} séance${result.sessionsConsumed! > 1 ? 's' : ''} recréditée${result.sessionsConsumed! > 1 ? 's' : ''}`
-        );
-      }
+      await notifyReservationCancelled(
+        reservation.studentId,
+        reservation.id,
+        course.title,
+        `${course.price}€ remboursés`
+      );
     } catch (notifError) {
       console.error('[cancelReservationWithRefund] Notification error:', notifError);
     }
 
     console.log('[cancelReservationWithRefund] Remboursement terminé:', {
-      studentId: result.reservation!.studentId,
-      sessionsRefunded: result.sessionsConsumed!
+      studentId: reservation.studentId,
+      amountRefunded: course.price
     });
 
     return { success: true };
