@@ -208,7 +208,7 @@ export class KiteSurfDB extends Dexie {
     this.version(14).stores({
       sessionExceptions: '++id, sessionId, [sessionId+type], date, createdAt',
     });
-    
+
     configureV14Migration(this);
   }
 }

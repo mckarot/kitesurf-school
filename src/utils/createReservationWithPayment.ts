@@ -133,7 +133,48 @@ export async function createReservationWithPayment(
         };
       }
 
-      // Étape 4: Débiter le montant du wallet
+      // Étape 4: Vérifier si l'élève n'a pas déjà réservé cette session
+      const allReservations = await db.reservations
+        .where('studentId')
+        .equals(userId)
+        .toArray();
+
+      const hasDuplicate = allReservations.some(r =>
+        r.courseId === courseSessionId &&
+        (r.status === 'pending' || r.status === 'confirmed')
+      );
+
+      if (hasDuplicate) {
+        return {
+          success: false,
+          error: 'Vous avez déjà réservé cette session. Une réservation ne peut être faite qu\'une seule fois par session.'
+        };
+      }
+
+      // Étape 5: Vérifier si la session n'est pas complète
+      const session = await db.courseSessions.get(courseSessionId);
+      
+      if (!session) {
+        return {
+          success: false,
+          error: 'Session non trouvée'
+        };
+      }
+
+      // Compter le nombre de réservations confirmées pour cette session
+      const sessionReservations = allReservations.filter(r =>
+        r.courseId === courseSessionId &&
+        (r.status === 'pending' || r.status === 'confirmed')
+      );
+
+      if (sessionReservations.length >= session.maxStudents) {
+        return {
+          success: false,
+          error: `Session complète. Maximum ${session.maxStudents} élèves.`
+        };
+      }
+
+      // Étape 6: Débiter le montant du wallet
       const newBalance = wallet.balance - pricing.price;
       await db.userWallets.update(wallet.id, {
         balance: newBalance,
