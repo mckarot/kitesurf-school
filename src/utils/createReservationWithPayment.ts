@@ -104,7 +104,7 @@ export async function createReservationWithPayment(
   coursePricingId: number
 ): Promise<CreateReservationWithPaymentResult> {
   try {
-    return await db.transaction('rw', db.userWallets, db.reservations, db.coursePricing, db.transactions, async () => {
+    return await db.transaction('rw', [db.userWallets, db.reservations, db.coursePricing, db.transactions, db.courseSessions], async () => {
       // Étape 1: Récupérer le wallet de l'utilisateur
       const wallet = await db.userWallets.where('userId').equals(userId).first();
       

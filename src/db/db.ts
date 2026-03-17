@@ -29,7 +29,6 @@ import { configureV8Migration } from './migrations/v8';
 import { configureV9Migration } from './migrations/v9';
 import { configureV10Migration } from './migrations/v10';
 import { configureV13Migration } from './migrations/v13';
-import { configureV14Migration } from './migrations/v14';
 
 export class KiteSurfDB extends Dexie {
   users!: Table<User, number>;
@@ -163,26 +162,6 @@ export class KiteSurfDB extends Dexie {
       users: '++id, email, role, isActive, createdAt',
       courses: '++id, instructorId, level, isActive, createdAt',
       reservations: '++id, studentId, courseId, status, createdAt',
-      courseSessions: '++id, courseId, isActive, createdAt',
-      timeSlots: '++id, instructorId, date, isAvailable, createdAt',
-      userPhysicalData: '++id, userId',
-      userHealthData: '++id, userId',
-      userProgression: '++id, userId',
-      transactions: '++id, userId, reservationId, status, createdAt',
-      courseCredits: '++id, studentId, [studentId+status], status, createdAt',
-      deletionRequests: '++id, userId, status, requestedAt, confirmationToken',
-      userConsents: '++id, userId, consentType, status, [userId+consentType]',
-      schoolSchedule: '++id, dayOfWeek, isActive, createdAt',
-      instructorAvailability: '++id, [instructorId+date+scheduleId], instructorId, date, isAvailable, createdAt',
-      notifications: '++id, userId, [userId+read], type, createdAt',
-    });
-
-    // Version 12: Add composite index [courseId+date+startTime] on courseSessions
-    // Required by generateCourseSessions to check for existing sessions
-    this.version(12).stores({
-      users: '++id, email, role, isActive, createdAt',
-      courses: '++id, instructorId, level, isActive, createdAt',
-      reservations: '++id, studentId, courseId, status, createdAt',
       courseSessions: '++id, courseId, isActive, createdAt, [courseId+date+startTime]',
       timeSlots: '++id, instructorId, date, isAvailable, createdAt',
       userPhysicalData: '++id, userId',
@@ -197,6 +176,10 @@ export class KiteSurfDB extends Dexie {
       notifications: '++id, userId, [userId+read], type, createdAt',
     });
 
+    // Version 12: Redundant migration, neutralized.
+    // The composite index [courseId+date+startTime] on courseSessions was added in v10 and corrected in v11.
+    this.version(12).stores({});
+
     // Version 13: Add userWallets and coursePricing tables for euros system
     // userWallets: Stores euro balance for each user (replaces credit system)
     // coursePricing: Dynamic pricing management by admin (displayed on /courses)
@@ -206,10 +189,30 @@ export class KiteSurfDB extends Dexie {
     // sessionExceptions: Track cancellations for holidays, weather, instructor illness, etc.
     // Enables automatic refunds and maintains audit history
     this.version(14).stores({
+      users: '++id, email, role, isActive, createdAt',
+      courses: '++id, instructorId, level, isActive, createdAt',
+      reservations: '++id, studentId, courseId, status, createdAt',
+      courseSessions: '++id, courseId, isActive, createdAt, [courseId+date+startTime]',
+      timeSlots: '++id, instructorId, date, isAvailable, createdAt',
+      userPhysicalData: '++id, userId',
+      userHealthData: '++id, userId',
+      userProgression: '++id, userId',
+      transactions: '++id, userId, reservationId, status, createdAt',
+      courseCredits: '++id, studentId, [studentId+status], status, createdAt',
+      notifications: '++id, userId, [userId+read], type, createdAt',
+      deletionRequests: '++id, userId, status, requestedAt, confirmationToken',
+      userConsents: '++id, userId, consentType, status, [userId+consentType]',
+      schoolSchedule: '++id, dayOfWeek, isActive, createdAt',
+      instructorAvailability: '++id, [instructorId+date+scheduleId], instructorId, date, isAvailable, createdAt',
+      userWallets: '++id, userId, balance, createdAt',
+      coursePricing: '++id, courseType, [courseType+isActive], isActive, createdAt',
       sessionExceptions: '++id, sessionId, [sessionId+type], date, createdAt',
+    }).upgrade(async (tx) => {
+      console.log('Database migrated to version 14: sessionExceptions table added');
+      const table = tx.table('sessionExceptions');
+      const count = await table.count();
+      console.log(`[v14 Migration] sessionExceptions initialized with ${count} records`);
     });
-
-    configureV14Migration(this);
   }
 }
 
