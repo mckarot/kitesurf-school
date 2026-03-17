@@ -22,7 +22,8 @@ import {
   CheckCircle,
   UserCheck,
   Gift,
-  XCircle
+  XCircle,
+  Wallet
 } from 'lucide-react';
 
 export function DashboardPage() {
@@ -257,6 +258,22 @@ export function DashboardPage() {
                   </div>
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Crédits</h3>
                   <p className="text-sm text-gray-600">Gérer les séances</p>
+                </motion.div>
+              </Link>
+
+              {/* Tarifs */}
+              <Link to="/admin/pricing">
+                <motion.div
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="bg-white rounded-3xl shadow-xl p-6 border border-green-100 cursor-pointer hover:shadow-2xl transition-all"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-400 rounded-2xl flex items-center justify-center">
+                      <Wallet className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">Tarifs</h3>
+                  <p className="text-sm text-gray-600">Gérer les prix</p>
                 </motion.div>
               </Link>
 
