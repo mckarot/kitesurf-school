@@ -39,6 +39,67 @@ export function AdminReservationsValidationPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
   const [expandedReservationId, setExpandedReservationId] = useState<number | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+
+  // Script de migration pour ajouter pricePaid aux anciennes réservations
+  const handleMigratePricePaid = async () => {
+    if (!confirm('⚠️ Migration des prix\n\nCe script va ajouter le champ pricePaid à toutes les réservations qui ne l\'ont pas.\n\nContinuer ?')) {
+      return;
+    }
+
+    setIsMigrating(true);
+    let migrated = 0;
+    let errors = 0;
+
+    try {
+      const allReservations = await db.reservations.toArray();
+      
+      for (const reservation of allReservations) {
+        if (reservation.pricePaid !== undefined && reservation.pricePaid !== null) {
+          continue; // Déjà migré
+        }
+
+        try {
+          // Récupérer la session pour trouver le cours
+          const session = await db.courseSessions.get(reservation.courseId);
+          if (!session) {
+            console.error('Session non trouvée pour reservation:', reservation.id);
+            errors++;
+            continue;
+          }
+
+          // Récupérer le cours pour avoir le prix
+          const course = await db.courses.get(session.courseId);
+          if (!course) {
+            console.error('Cours non trouvé pour session:', session.id);
+            errors++;
+            continue;
+          }
+
+          // Mettre à jour la réservation avec le prix
+          await db.reservations.update(reservation.id, {
+            pricePaid: course.price
+          });
+
+          migrated++;
+          console.log(`[Migration] Reservation ${reservation.id}: ${course.price}€`);
+        } catch (err) {
+          console.error('[Migration] Erreur:', err);
+          errors++;
+        }
+      }
+
+      alert(`✅ Migration terminée !\n\n${migrated} réservation(s) migrée(s)\n${errors} erreur(s)`);
+      
+      // Recharger les réservations
+      window.location.reload();
+    } catch (error) {
+      console.error('[Migration] Error:', error);
+      alert('❌ Erreur lors de la migration');
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   // Vérifier l'authentification
   useEffect(() => {
@@ -62,13 +123,18 @@ export function AdminReservationsValidationPage() {
         // Enrichir les réservations avec les données utilisateur et cours
         const enriched = await Promise.all(
           reservations.map(async (r) => {
-            const [student, course, session] = await Promise.all([
+            // IMPORTANT: r.courseId pointe vers une CourseSession, pas un Course !
+            const [student, session, course] = await Promise.all([
               db.users.get(r.studentId),
-              db.courses.get(r.courseId),
-              r.sessionId ? db.courseSessions.get(r.sessionId) : undefined,
+              r.sessionId ? db.courseSessions.get(r.sessionId) : db.courseSessions.get(r.courseId),
+              // D'abord récupérer la session, puis le cours via session.courseId
+              (async () => {
+                const sess = r.sessionId ? await db.courseSessions.get(r.sessionId) : await db.courseSessions.get(r.courseId);
+                return sess ? await db.courses.get(sess.courseId) : null;
+              })(),
             ]);
 
-            return { ...r, student, course, session };
+            return { ...r, student, course: course || undefined, session };
           })
         );
 
@@ -104,10 +170,14 @@ export function AdminReservationsValidationPage() {
       // Récupérer les données pour la notification
       const reservation = await db.reservations.get(reservationId);
       if (reservation) {
-        const [student, course, session, instructor] = await Promise.all([
+        // IMPORTANT: reservation.courseId pointe vers une CourseSession
+        const [student, session, course, instructor] = await Promise.all([
           db.users.get(reservation.studentId),
-          db.courses.get(reservation.courseId),
-          reservation.sessionId ? db.courseSessions.get(reservation.sessionId) : null,
+          reservation.sessionId ? db.courseSessions.get(reservation.sessionId) : db.courseSessions.get(reservation.courseId),
+          (async () => {
+            const sess = reservation.sessionId ? await db.courseSessions.get(reservation.sessionId) : await db.courseSessions.get(reservation.courseId);
+            return sess ? await db.courses.get(sess.courseId) : null;
+          })(),
           db.users.get(instructorId),
         ]);
 
@@ -334,6 +404,26 @@ export function AdminReservationsValidationPage() {
               </p>
             </div>
           </div>
+        </motion.div>
+
+        {/* Debug Button - TEMPORAIRE */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.5 }}
+          className="mb-6"
+        >
+          <button
+            onClick={handleMigratePricePaid}
+            disabled={isMigrating}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-full hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCcw className={`w-5 h-5 ${isMigrating ? 'animate-spin' : ''}`} />
+            {isMigrating ? 'Migration en cours...' : '🔧 MIGRER pricePaid (DEBUG)'}
+          </button>
+          <p className="text-xs text-gray-500 mt-2">
+            ⚠️ Ce bouton est temporaire - à supprimer après usage
+          </p>
         </motion.div>
 
         {/* Reservations List */}

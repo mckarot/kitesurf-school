@@ -13,143 +13,67 @@ import {
   Wind,
   ArrowRight,
   Calendar,
+  Heart,
+  Zap,
+  Target,
+  Trophy,
+  Medal,
+  Flame,
+  Droplet,
+  Sun,
+  Moon,
+  Cloud,
+  CloudRain,
 } from 'lucide-react';
-import { useCoursePricing } from '../../hooks/useCoursePricing';
+import { useCourseCards } from '../../hooks/useCourseCards';
+import { usePackCards } from '../../hooks/usePackCards';
+
+// Map icon names to actual components
+const ICON_MAP: Record<string, any> = {
+  Users,
+  User,
+  UsersRound,
+  Star,
+  Award,
+  Wind,
+  Clock,
+  Calendar,
+  Check,
+  Heart,
+  Zap,
+  Target,
+  Trophy,
+  Medal,
+  Flame,
+  Droplet,
+  Sun,
+  Moon,
+  Cloud,
+  CloudRain,
+};
 
 export function CoursesPage() {
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef });
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const { prices, isLoading } = useCoursePricing();
+  const { cards: courseCards, isLoading: courseCardsLoading } = useCourseCards();
+  const { cards: packCards, isLoading: packCardsLoading } = usePackCards();
 
-  // Afficher un loader pendant le chargement des tarifs
-  if (isLoading) {
+  // Afficher un loader pendant le chargement des données
+  if (courseCardsLoading || packCardsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div aria-busy="true" aria-live="polite" className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Chargement des tarifs...</p>
+          <p className="text-gray-600">Chargement des cours...</p>
         </div>
       </div>
     );
   }
 
-  // Récupérer les tarifs depuis la DB
-  const collectifPrice = prices.find(p => p.courseType === 'collectif' && p.isActive)?.price ?? 70;
-  const particulierPrice = prices.find(p => p.courseType === 'particulier' && p.isActive)?.price ?? 120;
-  const duoPrice = prices.find(p => p.courseType === 'duo' && p.isActive)?.price ?? 95;
-  const pack3Price = prices.find(p => p.courseType === 'pack_3' && p.isActive)?.price ?? 180;
-  const pack6Price = prices.find(p => p.courseType === 'pack_6' && p.isActive)?.price ?? 330;
-  const pack10Price = prices.find(p => p.courseType === 'pack_10' && p.isActive)?.price ?? 500;
-
-  const courses = [
-    {
-      id: 1,
-      name: 'Cours Collectif',
-      description: 'Apprenez en groupe dans une ambiance conviviale',
-      icon: Users,
-      price: collectifPrice,
-      duration: '2h30',
-      maxStudents: 6,
-      level: 'Tous niveaux',
-      features: [
-        'Matériel inclus',
-        'Équipement de sécurité',
-        'Briefing théorique',
-        'Pratique encadrée',
-        'Débriefing personnalisé',
-        'Attestation de progression',
-      ],
-      popular: false,
-      color: 'from-blue-500 to-cyan-400',
-    },
-    {
-      id: 2,
-      name: 'Cours Particulier',
-      description: 'Un accompagnement 100% personnalisé',
-      icon: User,
-      price: particulierPrice,
-      duration: '2h30',
-      maxStudents: 1,
-      level: 'Tous niveaux',
-      features: [
-        'Matériel premium inclus',
-        'Moniteur dédié',
-        'Programme sur mesure',
-        'Flexibilité horaire',
-        'Vidéo analyse',
-        'Suivi personnalisé',
-      ],
-      popular: true,
-      color: 'from-purple-500 to-pink-400',
-    },
-    {
-      id: 3,
-      name: 'Cours Duo',
-      description: "Partagez l'expérience à deux",
-      icon: UsersRound,
-      price: duoPrice,
-      duration: '2h30',
-      maxStudents: 2,
-      level: 'Tous niveaux',
-      features: [
-        'Matériel inclus',
-        'Équipement de sécurité',
-        'Attention personnalisée',
-        'Progression en duo',
-        'Moments de partage',
-        'Idéal couple/amis',
-      ],
-      popular: false,
-      color: 'from-orange-500 to-yellow-400',
-    },
-  ];
-
-  const packs = [
-    {
-      name: 'Pack Découverte',
-      sessions: 3,
-      price: pack3Price,
-      saving: (collectifPrice * 3) - pack3Price,
-      description: 'Parfait pour débuter et découvrir les sensations',
-      features: [
-        '3 cours collectifs',
-        'Matériel inclus',
-        'Progression garantie',
-        'Valable 1 mois',
-      ],
-    },
-    {
-      name: 'Pack Progression',
-      sessions: 6,
-      price: pack6Price,
-      saving: (collectifPrice * 6) - pack6Price,
-      description: 'Pour acquérir les bases et devenir autonome',
-      features: [
-        '6 cours collectifs',
-        'Matériel inclus',
-        'Suivi personnalisé',
-        'Valable 2 mois',
-        'Attestation incluse',
-      ],
-      popular: true,
-    },
-    {
-      name: 'Pack Expert',
-      sessions: 10,
-      price: pack10Price,
-      saving: (collectifPrice * 10) - pack10Price,
-      description: 'La formule complète pour maîtriser le kite',
-      features: [
-        '10 cours (collectifs ou duos)',
-        'Matériel premium',
-        'Vidéo analyse',
-        'Valable 3 mois',
-        'Certification FFK',
-        'Accès club partenaire',
-      ],
-    },
-  ];
+  // Filtrer les cartes actives
+  const activeCourseCards = courseCards.filter(card => card.isActive === 1);
+  const activePackCards = packCards.filter(card => card.isActive === 1);
 
   const levels = [
     {
@@ -307,76 +231,79 @@ export function CoursesPage() {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {courses.map((course, index) => (
-              <motion.div
-                key={course.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1, duration: 0.5 }}
-                whileHover={{ y: -12, scale: 1.02 }}
-                className={`relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 ${
-                  course.popular ? 'ring-2 ring-purple-500' : ''
-                }`}
-              >
-                {course.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                      Plus populaire
-                    </div>
-                  </div>
-                )}
-
-                <div
-                  className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${course.color} mb-6`}
-                >
-                  <course.icon className="w-8 h-8 text-white" />
-                </div>
-
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{course.name}</h3>
-                <p className="text-gray-600 mb-6">{course.description}</p>
-
-                <div className="flex items-baseline mb-6">
-                  <span className="text-5xl font-bold text-gray-900">{course.price}€</span>
-                  <span className="text-gray-600 ml-2">/séance</span>
-                </div>
-
-                <div className="space-y-3 mb-8">
-                  <div className="flex items-center space-x-2 text-gray-700">
-                    <Clock className="w-5 h-5 text-blue-500" />
-                    <span>{course.duration}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-gray-700">
-                    <Users className="w-5 h-5 text-blue-500" />
-                    <span>Max {course.maxStudents} {course.maxStudents === 1 ? 'élève' : 'élèves'}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-gray-700">
-                    <Award className="w-5 h-5 text-blue-500" />
-                    <span>{course.level}</span>
-                  </div>
-                </div>
-
-                <ul className="space-y-3 mb-8">
-                  {course.features.map((feature) => (
-                    <li key={feature} className="flex items-start space-x-2">
-                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  to="/student"
-                  className={`block w-full py-4 rounded-xl font-semibold text-center transition-all ${
-                    course.popular
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
-                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+            {activeCourseCards.map((course, index) => {
+              const IconComponent = ICON_MAP[course.icon] || Users;
+              return (
+                <motion.div
+                  key={course.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1, duration: 0.5 }}
+                  whileHover={{ y: -12, scale: 1.02 }}
+                  className={`relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 ${
+                    course.isHighlighted === 1 ? 'ring-2 ring-purple-500 ring-offset-4' : ''
                   }`}
                 >
-                  Réserver
-                </Link>
-              </motion.div>
-            ))}
+                  {course.badge && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                        {course.badge}
+                      </div>
+                    </div>
+                  )}
+
+                  <div
+                    className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${course.color} mb-6`}
+                  >
+                    <IconComponent className="w-8 h-8 text-white" />
+                  </div>
+
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{course.title}</h3>
+                  <p className="text-gray-600 mb-6">{course.description}</p>
+
+                  <div className="flex items-baseline mb-6">
+                    <span className="text-5xl font-bold text-gray-900">{course.price}€</span>
+                    <span className="text-gray-600 ml-2">/séance</span>
+                  </div>
+
+                  <div className="space-y-3 mb-8">
+                    <div className="flex items-center space-x-2 text-gray-700">
+                      <Clock className="w-5 h-5 text-blue-500" />
+                      <span>{course.duration}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-gray-700">
+                      <Users className="w-5 h-5 text-blue-500" />
+                      <span>Max {course.maxStudents} {course.maxStudents === 1 ? 'élève' : 'élèves'}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-gray-700">
+                      <Award className="w-5 h-5 text-blue-500" />
+                      <span>{course.level}</span>
+                    </div>
+                  </div>
+
+                  <ul className="space-y-3 mb-8">
+                    {course.features.map((feature) => (
+                      <li key={feature} className="flex items-start space-x-2">
+                        <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    to="/student"
+                    className={`block w-full py-4 rounded-xl font-semibold text-center transition-all ${
+                      course.isHighlighted === 1 || course.badge
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
+                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                    }`}
+                  >
+                    Réserver
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -399,38 +326,42 @@ export function CoursesPage() {
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {packs.map((pack, index) => (
+            {activePackCards.map((pack, index) => (
               <motion.div
-                key={pack.name}
+                key={pack.id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1, duration: 0.5 }}
                 whileHover={{ y: -12, scale: 1.02 }}
                 className={`relative bg-gradient-to-br from-gray-50 to-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 ${
-                  pack.popular ? 'border-purple-500' : 'border-transparent'
+                  pack.isHighlighted === 1 ? 'border-purple-500' : 'border-transparent'
                 }`}
               >
-                {pack.popular && (
+                {pack.badge && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                      Meilleure offre
+                      {pack.badge}
                     </div>
                   </div>
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{pack.name}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{pack.title}</h3>
                   <p className="text-gray-600">{pack.description}</p>
                 </div>
 
                 <div className="text-center mb-6">
                   <div className="flex items-center justify-center space-x-3">
                     <span className="text-5xl font-bold text-gray-900">{pack.price}€</span>
-                    <div className="text-left">
-                      <div className="text-sm text-gray-500 line-through">{pack.price + pack.saving}€</div>
-                      <div className="text-sm text-green-600 font-semibold">-{pack.saving}€</div>
-                    </div>
+                    {pack.originalPrice && (
+                      <div className="text-left">
+                        <div className="text-sm text-gray-500 line-through">{pack.originalPrice}€</div>
+                        {pack.discount !== undefined && pack.discount > 0 && (
+                          <div className="text-sm text-green-600 font-semibold">-{pack.discount}€</div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="text-gray-600 mt-2">{pack.sessions} séances</div>
                 </div>
@@ -447,7 +378,7 @@ export function CoursesPage() {
                 <Link
                   to="/student"
                   className={`block w-full py-4 rounded-xl font-semibold text-center transition-all ${
-                    pack.popular
+                    pack.isHighlighted === 1 || pack.badge
                       ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg'
                       : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                   }`}

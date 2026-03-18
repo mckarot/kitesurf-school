@@ -51,6 +51,9 @@ export async function cancelReservationWithRefund(
       };
     }
 
+    // Utiliser le prix payé (stocké dans la réservation) ou fallback sur course.price
+    const amountToRefund = reservation.pricePaid || course.price;
+
     // Étape 1-3: Transaction pour annulation + remboursement
     const result = await db.transaction('rw', db.reservations, db.userWallets, async () => {
       // Étape 1: Changer le statut de la réservation
@@ -68,8 +71,8 @@ export async function cancelReservationWithRefund(
         throw new Error('Portefeuille non trouvé');
       }
 
-      // Rembourser le prix du cours
-      const newBalance = wallet.balance + course.price;
+      // Rembourser le prix payé (stocké dans la réservation)
+      const newBalance = wallet.balance + amountToRefund;
       await db.userWallets.update(wallet.id, {
         balance: newBalance,
         updatedAt: Date.now()
@@ -77,7 +80,7 @@ export async function cancelReservationWithRefund(
 
       console.log('[cancelReservationWithRefund] Remboursement:', {
         walletId: wallet.id,
-        amountRefunded: course.price,
+        amountRefunded: amountToRefund,
         oldBalance: wallet.balance,
         newBalance: newBalance
       });
@@ -85,7 +88,7 @@ export async function cancelReservationWithRefund(
       return {
         success: true,
         error: undefined,
-        coursePrice: course.price,
+        amountRefunded: amountToRefund,
         courseTitle: course.title
       };
     });
@@ -100,7 +103,7 @@ export async function cancelReservationWithRefund(
         reservation.studentId,
         reservation.id,
         course.title,
-        `${course.price}€ remboursés`
+        `${amountToRefund}€ remboursés`
       );
     } catch (notifError) {
       console.error('[cancelReservationWithRefund] Notification error:', notifError);
@@ -108,7 +111,7 @@ export async function cancelReservationWithRefund(
 
     console.log('[cancelReservationWithRefund] Remboursement terminé:', {
       studentId: reservation.studentId,
-      amountRefunded: course.price
+      amountRefunded: amountToRefund
     });
 
     return { success: true };

@@ -30,7 +30,7 @@ Tu ne codes pas toi-même. Tu analyses, tu délègues, tu contrôles, tu rapport
 | `developer` | Implémente le code fonctionnel (diffs si fichier existant, complet si nouveau) | read_file, write_file, execute_command, grep_search |
 | `ui-animator` | Ajoute les animations sur le code existant (Tailwind ou Framer Motion) | read_file, write_file, grep_search, directory_list |
 | `reviewer` | Audite le code → retourne un **JSON pur** parseable | read_file, grep_search, directory_list |
-| `tester` | Vitest + RTL + Playwright avec `fake-indexeddb` et seed Dexie | read_file, write_file, execute_command, grep_search |
+| `tester` | Vitest + RTL (jsdom) avec `fake-indexeddb` pour Dexie | read_file, write_file, execute_command, grep_search |
 
 ---
 
@@ -314,6 +314,164 @@ Score  : [score final reviewer]/10
 # Reprendre après blocage
 "Reprendre review sur [nom de la tâche] — corrections manuelles appliquées"
 ```
+
+---
+
+## 🧪 AGENT `tester` — CONFIGURATION ET CONVENTIONS
+
+### Structure de fichiers de tests
+
+```
+src/
+├── components/
+│   └── Button/
+│       ├── index.tsx
+│       └── __tests__/
+│           └── Button.test.tsx
+├── hooks/
+│   ├── useCourses.ts
+│   └── __tests__/
+│       └── useCourses.test.ts
+├── db/
+│   ├── db.ts
+│   └── __tests__/
+│       └── db.test.ts
+└── pages/
+    └── CoursesPage/
+        ├── index.tsx
+        └── __tests__/
+            └── CoursesPage.test.tsx
+```
+
+**Règles :**
+- Tests de composants → `src/components/**/__tests__/*.test.tsx`
+- Tests de hooks → `src/hooks/__tests__/*.test.ts`
+- Tests de base de données → `src/db/__tests__/*.test.ts`
+- Tests de pages → `src/pages/**/__tests__/*.test.tsx`
+
+### Configuration Vitest
+
+```ts
+// vitest.config.ts
+test: {
+  globals: true,
+  environment: 'jsdom',
+  setupFiles: ['./src/test/setup.ts'],
+  include: ['src/**/__tests__/**/*.test.ts', 'src/**/__tests__/**/*.test.tsx'],
+  coverage: {
+    provider: 'v8',
+    reporter: ['text', 'json', 'html'],
+  },
+}
+```
+
+### Setup de test (`src/test/setup.ts`)
+
+```ts
+import '@testing-library/jest-dom';
+import { indexedDB } from 'fake-indexeddb';
+
+// Global mock pour Dexie.js
+beforeEach(() => {
+  indexedDB.databases.clear();
+});
+```
+
+### Patterns de test
+
+#### 1. Test de composant avec RTL
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { Button } from '../index';
+
+describe('Button', () => {
+  it('renders correctly with label', () => {
+    render(<Button label="Click me" onClick={vi.fn()} />);
+    expect(screen.getByText('Click me')).toBeInTheDocument();
+  });
+
+  it('calls onClick when clicked', async () => {
+    const handleClick = vi.fn();
+    render(<Button label="Click" onClick={handleClick} />);
+    await userEvent.click(screen.getByText('Click'));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+#### 2. Test de hook avec fake-indexeddb
+
+```ts
+import { renderHook, waitFor } from '@testing-library/react';
+import { useCourses } from '../useCourses';
+import { db } from '@/db/db';
+
+describe('useCourses', () => {
+  beforeEach(async () => {
+    // Seed initial data
+    await db.courses.add({
+      id: '1',
+      name: 'Beginner Course',
+      level: 'beginner',
+    });
+  });
+
+  afterEach(async () => {
+    await db.courses.clear();
+  });
+
+  it('loads courses from database', async () => {
+    const { result } = renderHook(() => useCourses());
+    await waitFor(() => {
+      expect(result.current.courses).toHaveLength(1);
+    });
+    expect(result.current.courses[0].name).toBe('Beginner Course');
+  });
+});
+```
+
+#### 3. Test de non-régression (bugfix)
+
+```ts
+describe('CourseFilter', () => {
+  it('returns empty list when no courses match filter', async () => {
+    // Setup: add courses with different levels
+    await db.courses.bulkAdd([
+      { id: '1', name: 'Beginner', level: 'beginner' },
+      { id: '2', name: 'Advanced', level: 'advanced' },
+    ]);
+
+    const { result } = renderHook(() => useCoursesByLevel('expert'));
+    await waitFor(() => {
+      expect(result.current.courses).toHaveLength(0);
+    });
+  });
+});
+```
+
+### Commandes de test
+
+```bash
+# Lancer les tests en watch mode
+npm test
+
+# Lancer les tests une fois
+npm run test:run
+
+# Lancer les tests avec coverage
+npm run test:coverage
+
+# Ouvrir l'UI Vitest
+npm run test:ui
+```
+
+### Objectifs de coverage
+
+- **Hooks** : 100% (logique métier critique)
+- **Composants UI** : > 80%
+- **Pages** : > 70%
+- **Database** : 100% (migrations et requêtes critiques)
 
 ---
 

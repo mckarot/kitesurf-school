@@ -1,13 +1,14 @@
 // src/pages/Student/index.tsx
+// Page Étudiant - Synchronisée avec CourseCards et PackCards
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../hooks/useAuth';
-import { useCourses } from '../../hooks/useCourses';
+import { useCourseCards } from '../../hooks/useCourseCards';
+import { usePackCards } from '../../hooks/usePackCards';
 import { useReservations } from '../../hooks/useReservations';
 import { useUserWallet } from '../../hooks/useUserWallet';
-import { useCoursePricing } from '../../hooks/useCoursePricing';
 import { createReservationWithPayment } from '../../utils/createReservationWithPayment';
 import { refreshCourseSessions } from '../../utils/generateCourseSessions';
 import { Button } from '../../components/ui/Button';
@@ -16,23 +17,32 @@ import { Badge } from '../../components/ui/Badge';
 import { BookCourseModal } from './BookCourseModal';
 import { StudentErrorBoundary } from './StudentErrorBoundary';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
-import type { CourseSession, CoursePricing } from '../../types';
-import { Calendar, Users, DollarSign, CheckCircle, XCircle, AlertCircle, Wallet } from 'lucide-react';
+import type { CourseSession, CourseCard, PackCard } from '../../types';
+import { Calendar, Users, DollarSign, CheckCircle, XCircle, AlertCircle, Wallet, Star, Zap, UsersRound } from 'lucide-react';
+
+// Map icon names to actual components
+const ICON_MAP: Record<string, any> = {
+  Users,
+  UsersRound,
+  Star,
+  Zap,
+};
 
 /**
  * Page Étudiant - Réserver un Cours
  * Design Metalab harmonisé avec le reste du site
+ * Utilise les CourseCards et PackCards depuis la base de données
  */
 export function StudentPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { courses, isLoading: coursesLoading } = useCourses();
+  const { cards: courseCards, isLoading: courseCardsLoading } = useCourseCards();
+  const { cards: packCards, isLoading: packCardsLoading } = usePackCards();
   const { createReservation, reservations, isLoading: reservationLoading } = useReservations();
   const { wallet, balance, refreshWallet, hasSufficientBalance } = useUserWallet();
-  const { prices } = useCoursePricing();
   const navigate = useNavigate();
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<{ id: number; title: string; price: number; pricingId: number } | null>(null);
+  const [selectedCourseCard, setSelectedCourseCard] = useState<{ id: number; title: string; price: number; courseType: CourseCard['courseType'] } | null>(null);
   const [sessionsRequired] = useState<number>(1);
 
   // Redirect if not authenticated or not a student
@@ -50,25 +60,27 @@ export function StudentPage() {
     }
   }, [authLoading, user]);
 
-  const handleReserveClick = (course: { id: number; title: string; price: number; pricingId: number }) => {
-    setSelectedCourse(course);
+  const handleReserveClick = (courseCard: { id: number; title: string; price: number; courseType: CourseCard['courseType'] }) => {
+    setSelectedCourseCard(courseCard);
     setIsBookingModalOpen(true);
   };
 
   const handleConfirmBooking = async (session: CourseSession) => {
-    if (!selectedCourse || !user) {
+    if (!selectedCourseCard || !user) {
       throw new Error('Données de réservation invalides');
     }
 
     console.log('[StudentPage] Confirmation réservation:', {
       userId: user.id,
       sessionId: session.id,
-      pricingId: selectedCourse.pricingId,
-      course: selectedCourse.title,
-      price: selectedCourse.price,
+      courseType: selectedCourseCard.courseType,
+      course: selectedCourseCard.title,
+      price: selectedCourseCard.price,
     });
 
-    const result = await createReservationWithPayment(user.id, session.id, selectedCourse.pricingId);
+    // Note: createReservationWithPayment needs to be adapted for courseType instead of pricingId
+    // For now, we'll need to find the pricingId based on courseType
+    const result = await createReservationWithPayment(user.id, session.id, selectedCourseCard.courseType);
 
     console.log('[StudentPage] Résultat:', result);
 
@@ -78,7 +90,7 @@ export function StudentPage() {
 
     // Fermer le modal
     setIsBookingModalOpen(false);
-    setSelectedCourse(null);
+    setSelectedCourseCard(null);
 
     // Rafraîchir le wallet
     await refreshWallet();
@@ -87,21 +99,25 @@ export function StudentPage() {
     alert(`✅ Réservation confirmée ! ${result.pricePaid}€ débités. Solde restant: ${result.newBalance?.toFixed(2)}€`);
   };
 
-  const isReserved = (courseId: number): boolean => {
+  const isReserved = (courseType: CourseCard['courseType']): boolean => {
+    // Check if user has active reservations for this course type
+    // Note: We check by courseType since CourseCards represent course types, not specific courses
     return reservations.some(
-      (r) => r.courseId === courseId && r.studentId === user?.id && r.status !== 'cancelled'
+      (r) => r.courseType === courseType && r.studentId === user?.id && r.status !== 'cancelled'
     );
   };
 
-  const activeCourses = courses.filter((c) => c.isActive === 1);
-  
+  // Filtrer les cartes actives
+  const activeCourseCards = courseCards.filter(card => card.isActive === 1);
+  const activePackCards = packCards.filter(card => card.isActive === 1);
+
   // Helper pour vérifier si le solde est suffisant pour un cours donné
   const canAffordCourse = (price: number): boolean => {
     return balance >= price;
   };
 
-  // Show loading while auth is being checked
-  if (authLoading) {
+  // Show loading while auth or data is being checked
+  if (authLoading || courseCardsLoading || packCardsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100 flex items-center justify-center">
         <LoadingSpinner size="lg" color="blue" showLabel label="Chargement..." />
@@ -141,7 +157,7 @@ export function StudentPage() {
                   transition={{ delay: 0.3, duration: 0.6 }}
                   className="text-blue-100 text-lg"
                 >
-                  Choisissez votre session et réservez en un clic
+                  Choisissez votre formule et réservez en un clic
                 </motion.p>
               </div>
               <motion.button
@@ -195,28 +211,28 @@ export function StudentPage() {
             </div>
           </motion.div>
 
-          {/* Courses Grid */}
+          {/* CourseCards Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Cours Disponibles</h2>
-              <Badge variant={activeCourses.length > 0 ? 'success' : 'danger'}>
-                {activeCourses.length} cours{activeCourses.length > 1 ? 's' : ''}
+              <h2 className="text-2xl font-bold text-gray-900">Formules de Cours</h2>
+              <Badge variant={activeCourseCards.length > 0 ? 'success' : 'danger'}>
+                {activeCourseCards.length} formule{activeCourseCards.length > 1 ? 's' : ''}
               </Badge>
             </div>
 
-            {activeCourses.length === 0 ? (
+            {activeCourseCards.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="bg-white rounded-3xl p-12 text-center shadow-lg"
               >
                 <AlertCircle className="w-20 h-20 text-gray-300 mx-auto mb-6" />
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">Aucun cours disponible</h3>
-                <p className="text-gray-600 mb-6">Revenez plus tard pour de nouvelles sessions</p>
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">Aucune formule disponible</h3>
+                <p className="text-gray-600 mb-6">Revenez plus tard pour de nouvelles formules</p>
                 <Button
                   variant="primary"
                   onClick={() => navigate('/home')}
@@ -227,38 +243,14 @@ export function StudentPage() {
               </motion.div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {activeCourses.map((course, index) => {
-                  // Trouver le tarif correspondant au type de cours
-                  const courseTypeMap: Record<string, CoursePricing['courseType']> = {
-                    'collectif': 'collectif',
-                    'particulier': 'particulier',
-                    'duo': 'duo',
-                  };
+                {activeCourseCards.map((card, index) => {
+                  const IconComponent = ICON_MAP[card.icon] || Users;
+                  const hasSufficientBalance = canAffordCourse(card.price);
+                  const isCardReserved = isReserved(card.courseType);
 
-                  // Déterminer le type de cours basé sur le titre ou le prix
-                  let pricingType: CoursePricing['courseType'] = 'collectif';
-                  if (course.title.toLowerCase().includes('particulier')) {
-                    pricingType = 'particulier';
-                  } else if (course.title.toLowerCase().includes('duo')) {
-                    pricingType = 'duo';
-                  }
-
-                  // Récupérer le tarif depuis la DB
-                  const pricing = prices.find(p => p.courseType === pricingType && p.isActive === 1);
-                  const price = pricing?.price ?? course.price;
-                  const pricingId = pricing?.id;
-
-                  // Skip this course if pricing is not found
-                  if (!pricingId) {
-                    console.warn('[StudentPage] Pricing not found for course:', course.id, pricingType);
-                    return null;
-                  }
-                  
-                  const hasSufficientBalance = canAffordCourse(price);
-                  
                   return (
                     <motion.div
-                      key={course.id}
+                      key={card.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1, duration: 0.5 }}
@@ -266,33 +258,27 @@ export function StudentPage() {
                     >
                       <Card variant="elevated" className="h-full flex flex-col overflow-hidden rounded-3xl">
                         {/* Card Header */}
-                        <div className={`h-3 bg-gradient-to-r ${
-                          course.level === 'beginner'
-                            ? 'from-green-400 to-green-500'
-                            : course.level === 'intermediate'
-                            ? 'from-orange-400 to-orange-500'
-                            : 'from-red-400 to-red-500'
-                        }`} />
+                        <div className={`h-3 bg-gradient-to-r ${card.color}`} />
 
                         <CardBody className="flex-1 p-6">
                           <div className="flex items-start justify-between mb-4">
                             <Badge
                               variant={
-                                course.level === 'beginner'
+                                card.courseType === 'collectif'
                                   ? 'success'
-                                  : course.level === 'intermediate'
+                                  : card.courseType === 'particulier'
                                   ? 'warning'
                                   : 'danger'
                               }
                               className="text-sm"
                             >
-                              {course.level === 'beginner'
-                                ? '🌱 Débutant'
-                                : course.level === 'intermediate'
-                                ? '⚡ Intermédiaire'
-                                : '🔥 Avancé'}
+                              {card.courseType === 'collectif'
+                                ? '👥 Collectif'
+                                : card.courseType === 'particulier'
+                                ? '🎯 Particulier'
+                                : '👥 Duo'}
                             </Badge>
-                            {isReserved(course.id) && (
+                            {isCardReserved && (
                               <Badge variant="info" className="flex items-center space-x-1">
                                 <CheckCircle className="w-3 h-3" />
                                 <span>Réservé</span>
@@ -300,29 +286,43 @@ export function StudentPage() {
                             )}
                           </div>
 
-                          <h3 className="text-xl font-bold text-gray-900 mb-3">
-                            {course.title}
-                          </h3>
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${card.color}`}>
+                              <IconComponent className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {card.title}
+                            </h3>
+                          </div>
 
                           <p className="text-gray-600 mb-6 line-clamp-2">
-                            {course.description}
+                            {card.description}
                           </p>
 
                           <div className="space-y-3">
                             <div className="flex items-center space-x-3 text-gray-600">
                               <Users className="w-5 h-5 text-blue-500" />
-                              <span className="text-sm">Max {course.maxStudents} élèves</span>
+                              <span className="text-sm">Max {card.maxStudents} {card.maxStudents === 1 ? 'élève' : 'élèves'}</span>
                             </div>
                             <div className="flex items-center space-x-3 text-gray-600">
                               <DollarSign className="w-5 h-5 text-cyan-500" />
-                              <span className="font-semibold text-gray-900">{price}€ / séance</span>
+                              <span className="font-semibold text-gray-900">{card.price}€ / séance</span>
                             </div>
                           </div>
+
+                          <ul className="space-y-2 mt-4">
+                            {card.features.slice(0, 3).map((feature) => (
+                              <li key={feature} className="flex items-start space-x-2 text-sm text-gray-600">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </CardBody>
 
                         {/* Card Footer */}
                         <div className="border-t border-gray-100 p-6 bg-gray-50">
-                          {isReserved(course.id) ? (
+                          {isCardReserved ? (
                             <Button
                               variant="secondary"
                               className="w-full"
@@ -335,11 +335,11 @@ export function StudentPage() {
                             <Button
                               variant={hasSufficientBalance ? 'primary' : 'secondary'}
                               className="w-full"
-                              onClick={() => handleReserveClick({ 
-                                id: course.id, 
-                                title: course.title, 
-                                price,
-                                pricingId: pricingId ?? 0
+                              onClick={() => handleReserveClick({
+                                id: card.id,
+                                title: card.title,
+                                price: card.price,
+                                courseType: card.courseType
                               })}
                               disabled={!hasSufficientBalance}
                               isLoading={reservationLoading}
@@ -365,6 +365,124 @@ export function StudentPage() {
               </div>
             )}
           </motion.div>
+
+          {/* PackCards Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="mt-12"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Packs Économiques</h2>
+              <Badge variant={activePackCards.length > 0 ? 'success' : 'danger'}>
+                {activePackCards.length} pack{activePackCards.length > 1 ? 's' : ''}
+              </Badge>
+            </div>
+
+            {activePackCards.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white rounded-3xl p-12 text-center shadow-lg"
+              >
+                <AlertCircle className="w-20 h-20 text-gray-300 mx-auto mb-6" />
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">Aucun pack disponible</h3>
+                <p className="text-gray-600 mb-6">Revenez plus tard pour de nouveaux packs</p>
+              </motion.div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activePackCards.map((pack, index) => {
+                  const IconComponent = ICON_MAP[pack.icon] || Star;
+                  const hasSufficientBalance = canAffordCourse(pack.price);
+
+                  return (
+                    <motion.div
+                      key={pack.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.5 }}
+                      whileHover={{ y: -8, scale: 1.02 }}
+                    >
+                      <Card variant="elevated" className="h-full flex flex-col overflow-hidden rounded-3xl">
+                        {/* Card Header */}
+                        {pack.badge && (
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                              {pack.badge}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className={`h-3 bg-gradient-to-r ${pack.color}`} />
+
+                        <CardBody className="flex-1 p-6">
+                          <div className="flex items-center space-x-3 mb-4">
+                            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${pack.color}`}>
+                              <IconComponent className="w-6 h-6 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {pack.title}
+                            </h3>
+                          </div>
+
+                          <p className="text-gray-600 mb-6 line-clamp-2">
+                            {pack.description}
+                          </p>
+
+                          <div className="text-center mb-6">
+                            <div className="flex items-center justify-center space-x-3">
+                              <span className="text-4xl font-bold text-gray-900">{pack.price}€</span>
+                              {pack.originalPrice && (
+                                <div className="text-left">
+                                  <div className="text-sm text-gray-500 line-through">{pack.originalPrice}€</div>
+                                  {pack.discount !== undefined && pack.discount > 0 && (
+                                    <div className="text-sm text-green-600 font-semibold">-{pack.discount}€</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-gray-600 mt-2">{pack.sessions} séances</div>
+                          </div>
+
+                          <ul className="space-y-2">
+                            {pack.features.slice(0, 4).map((feature) => (
+                              <li key={feature} className="flex items-start space-x-2 text-sm text-gray-600">
+                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardBody>
+
+                        {/* Card Footer */}
+                        <div className="border-t border-gray-100 p-6 bg-gray-50">
+                          <Button
+                            variant={hasSufficientBalance ? 'primary' : 'secondary'}
+                            className="w-full"
+                            disabled={!hasSufficientBalance}
+                            isLoading={reservationLoading}
+                          >
+                            {hasSufficientBalance ? (
+                              <>
+                                <Calendar className="w-5 h-5 mr-2" />
+                                Choisir ce pack
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-5 h-5 mr-2 text-red-500" />
+                                Solde insuffisant
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
         </main>
 
         {/* Booking Modal */}
@@ -372,10 +490,10 @@ export function StudentPage() {
           isOpen={isBookingModalOpen}
           onClose={() => {
             setIsBookingModalOpen(false);
-            setSelectedCourse(null);
+            setSelectedCourseCard(null);
           }}
-          courseTitle={selectedCourse?.title || ''}
-          coursePrice={selectedCourse?.price || 0}
+          courseTitle={selectedCourseCard?.title || ''}
+          coursePrice={selectedCourseCard?.price || 0}
           sessionsRequired={sessionsRequired}
           currentBalance={balance || 0}
           onConfirm={handleConfirmBooking}

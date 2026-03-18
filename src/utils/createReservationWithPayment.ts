@@ -2,7 +2,7 @@
 // Réservation de cours avec paiement en euros (système v13)
 
 import { db } from '../db/db';
-import type { UserWallet, CoursePricing, WalletTransaction, Reservation, User } from '../types';
+import type { UserWallet, CoursePricing, WalletTransaction, Reservation, User, CourseCard } from '../types';
 
 export interface CreateReservationWithPaymentResult {
   success: boolean;
@@ -21,19 +21,19 @@ export interface CheckBalanceResult {
 
 /**
  * Vérifie si l'utilisateur a un solde suffisant pour réserver un cours.
- * 
+ *
  * @param userId - ID de l'utilisateur
- * @param coursePricingId - ID du tarif du cours
+ * @param coursePricingIdOrType - ID du tarif du cours OU type de cours ('collectif' | 'particulier' | 'duo')
  * @returns Promise<CheckBalanceResult>
  */
 export async function checkBalanceForReservation(
   userId: number,
-  coursePricingId: number
+  coursePricingIdOrType: number | CourseCard['courseType']
 ): Promise<CheckBalanceResult> {
   try {
     // Récupérer le wallet de l'utilisateur
     const wallet = await db.userWallets.where('userId').equals(userId).first();
-    
+
     if (!wallet) {
       return {
         canReserve: false,
@@ -44,8 +44,18 @@ export async function checkBalanceForReservation(
     }
 
     // Récupérer le tarif du cours
-    const pricing = await db.coursePricing.get(coursePricingId);
+    let pricing: CoursePricing | undefined;
     
+    if (typeof coursePricingIdOrType === 'number') {
+      pricing = await db.coursePricing.get(coursePricingIdOrType);
+    } else {
+      // C'est un courseType, on cherche le tarif correspondant
+      pricing = await db.coursePricing
+        .where('courseType')
+        .equals(coursePricingIdOrType)
+        .first();
+    }
+
     if (!pricing || !pricing.isActive) {
       return {
         canReserve: false,
@@ -83,31 +93,31 @@ export async function checkBalanceForReservation(
 
 /**
  * Crée une réservation en débitant le montant du portefeuille de l'utilisateur.
- * 
+ *
  * Algorithme:
  * 1. Vérifie le solde du wallet utilisateur
  * 2. Vérifie que le tarif est actif
  * 3. Débite le montant du wallet
  * 4. Crée la réservation avec statut 'pending'
  * 5. Enregistre la transaction dans l'historique
- * 
+ *
  * Transaction atomique: si une étape échoue, tout est annulé.
- * 
+ *
  * @param userId - ID de l'utilisateur qui réserve
  * @param courseSessionId - ID de la session de cours
- * @param coursePricingId - ID du tarif du cours
+ * @param coursePricingIdOrType - ID du tarif du cours OU type de cours ('collectif' | 'particulier' | 'duo')
  * @returns Promise<CreateReservationWithPaymentResult>
  */
 export async function createReservationWithPayment(
   userId: number,
   courseSessionId: number,
-  coursePricingId: number
+  coursePricingIdOrType: number | CourseCard['courseType']
 ): Promise<CreateReservationWithPaymentResult> {
   try {
     return await db.transaction('rw', [db.userWallets, db.reservations, db.coursePricing, db.transactions, db.courseSessions], async () => {
       // Étape 1: Récupérer le wallet de l'utilisateur
       const wallet = await db.userWallets.where('userId').equals(userId).first();
-      
+
       if (!wallet) {
         return {
           success: false,
@@ -116,8 +126,18 @@ export async function createReservationWithPayment(
       }
 
       // Étape 2: Récupérer le tarif du cours
-      const pricing = await db.coursePricing.get(coursePricingId);
+      let pricing: CoursePricing | undefined;
       
+      if (typeof coursePricingIdOrType === 'number') {
+        pricing = await db.coursePricing.get(coursePricingIdOrType);
+      } else {
+        // C'est un courseType, on cherche le tarif correspondant
+        pricing = await db.coursePricing
+          .where('courseType')
+          .equals(coursePricingIdOrType)
+          .first();
+      }
+
       if (!pricing || !pricing.isActive) {
         return {
           success: false,
@@ -187,7 +207,9 @@ export async function createReservationWithPayment(
         courseId: courseSessionId,
         sessionId: courseSessionId,
         instructorId: null,
+        courseType: typeof coursePricingIdOrType === 'string' ? coursePricingIdOrType : pricing.courseType,
         status: 'pending',
+        pricePaid: pricing.price, // ← Stocker le prix payé
         createdAt: Date.now(),
       };
       const reservationId = await db.reservations.add(reservationData as Reservation);

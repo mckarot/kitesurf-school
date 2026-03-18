@@ -99,8 +99,10 @@ export interface Reservation {
   courseId: number;
   sessionId?: number;
   instructorId?: number | null; // Moniteur assigné (null si pas encore assigné)
+  courseType?: 'collectif' | 'particulier' | 'duo' | 'pack_3' | 'pack_6' | 'pack_10'; // Type de cours/pack réservé
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   sessionsConsumed?: number; // Nombre de séances consommées pour cette réservation
+  pricePaid?: number; // Prix payé en euros (pour le remboursement)
   createdAt: number;
 }
 
@@ -288,6 +290,84 @@ export interface CoursePricingInput {
 }
 
 export type UpdateCoursePricingInput = Partial<CoursePricingInput> & { id: number };
+
+// ============================================
+// COURSE CARDS & PACK CARDS (DISPLAY ON /courses)
+// ============================================
+
+/**
+ * CourseCard - Carte de cours affichée sur la page /courses
+ *
+ * Affiche les informations complètes d'un cours :
+ * - Titre, description, prix, durée, max élèves, niveau
+ * - Liste des avantages (features)
+ * - Badge optionnel ("Plus populaire", etc.)
+ * - Surbrillance optionnelle
+ */
+export interface CourseCard {
+  id: number;
+  courseType: 'collectif' | 'particulier' | 'duo';
+  title: string;
+  description: string;
+  price: number; // Prix par séance
+  duration: string; // "2h30"
+  maxStudents: number;
+  level: string; // "Tous niveaux", "Débutant", etc.
+  features: string[]; // Liste des avantages
+  badge?: string; // Texte du badge (ex: "Plus populaire")
+  isHighlighted: 0 | 1; // Surbrillance activée
+  color: string; // Dégradé de couleur (ex: "from-blue-500 to-cyan-400")
+  icon: string; // Nom de l'icône (ex: "Users", "User", "UsersRound")
+  isActive: 0 | 1;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+/**
+ * PackCard - Carte de pack affichée sur la page /courses
+ *
+ * Affiche les informations complètes d'un pack :
+ * - Titre, description, nombre de séances
+ * - Prix actuel, prix original barré, économie réalisée
+ * - Liste des avantages (features)
+ * - Badge optionnel ("Meilleure offre", etc.)
+ * - Surbrillance optionnelle
+ * - Couleur et icône pour l'affichage
+ */
+export interface PackCard {
+  id: number;
+  packType: 'pack_3' | 'pack_6' | 'pack_10';
+  title: string;
+  description: string;
+  sessions: number; // Nombre de séances (3, 6, 10)
+  price: number; // Prix actuel du pack
+  originalPrice?: number; // Prix barré (calculé ou manuel)
+  discount?: number; // Économie réalisée (calculée ou manuelle)
+  features: string[]; // Liste des avantages
+  badge?: string; // Texte du badge (ex: "Meilleure offre")
+  isHighlighted: 0 | 1; // Surbrillance activée
+  color: string; // Dégradé de couleur (ex: "from-purple-500 to-pink-500")
+  icon: string; // Nom de l'icône (ex: "Star", "Award", "Trophy")
+  isActive: 0 | 1;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+/**
+ * Input pour créer/mettre à jour une CourseCard
+ */
+export type CourseCardInput = Omit<CourseCard, 'id' | 'createdAt' | 'updatedAt'>;
+
+/**
+ * Input pour créer/mettre à jour une PackCard
+ */
+export type PackCardInput = Omit<PackCard, 'id' | 'createdAt' | 'updatedAt'>;
+
+/**
+ * Input partiel pour mise à jour
+ */
+export type UpdateCourseCardInput = Partial<CourseCardInput> & { id: number };
+export type UpdatePackCardInput = Partial<PackCardInput> & { id: number };
 
 export type AddCourseCreditInput = Pick<CourseCredit, 'studentId' | 'sessions' | 'expiresAt'> & {
   instructorId?: number;

@@ -20,7 +20,9 @@ import type {
   Notification,
   UserWallet,
   CoursePricing,
-  SessionException
+  SessionException,
+  CourseCard,
+  PackCard
 } from '../types';
 import { configureV5Migration } from './migrations/v5';
 import { configureV6Migration } from './migrations/v6';
@@ -29,6 +31,8 @@ import { configureV8Migration } from './migrations/v8';
 import { configureV9Migration } from './migrations/v9';
 import { configureV10Migration } from './migrations/v10';
 import { configureV13Migration } from './migrations/v13';
+import { configureV15Migration } from './migrations/v15';
+import { configureV16Migration } from './migrations/v16';
 
 export class KiteSurfDB extends Dexie {
   users!: Table<User, number>;
@@ -49,6 +53,8 @@ export class KiteSurfDB extends Dexie {
   userWallets!: Table<UserWallet, number>;
   coursePricing!: Table<CoursePricing, number>;
   sessionExceptions!: Table<SessionException, number>;
+  courseCards!: Table<CourseCard, number>;
+  packCards!: Table<PackCard, number>;
 
   constructor() {
     super('KiteSurfSchoolDB');
@@ -213,6 +219,16 @@ export class KiteSurfDB extends Dexie {
       const count = await table.count();
       console.log(`[v14 Migration] sessionExceptions initialized with ${count} records`);
     });
+
+    // Version 15: Add courseCards and packCards tables for dynamic display on /courses
+    // courseCards: Stores course cards (collectif, particulier, duo) with badges and highlights
+    // packCards: Stores pack cards (pack_3, pack_6, pack_10) with badges and highlights
+    configureV15Migration(this);
+
+    // Version 16: Add courseType field to reservations table
+    // Enables filtering reservations by course type (collectif, particulier, duo)
+    // Required for synchronization with CourseCards on /student page
+    configureV16Migration(this);
   }
 }
 
