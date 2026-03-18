@@ -24,11 +24,13 @@ export interface CheckBalanceResult {
  *
  * @param userId - ID de l'utilisateur
  * @param coursePricingIdOrType - ID du tarif du cours OU type de cours ('collectif' | 'particulier' | 'duo')
+ * @param price - Prix du cours (depuis CourseCard)
  * @returns Promise<CheckBalanceResult>
  */
 export async function checkBalanceForReservation(
   userId: number,
-  coursePricingIdOrType: number | CourseCard['courseType']
+  coursePricingIdOrType: number | CourseCard['courseType'],
+  price?: number
 ): Promise<CheckBalanceResult> {
   try {
     // Récupérer le wallet de l'utilisateur
@@ -43,42 +45,50 @@ export async function checkBalanceForReservation(
       };
     }
 
-    // Récupérer le tarif du cours
-    let pricing: CoursePricing | undefined;
-    
-    if (typeof coursePricingIdOrType === 'number') {
-      pricing = await db.coursePricing.get(coursePricingIdOrType);
-    } else {
-      // C'est un courseType, on cherche le tarif correspondant
-      pricing = await db.coursePricing
-        .where('courseType')
-        .equals(coursePricingIdOrType)
-        .first();
-    }
+    // Si le prix est fourni directement (depuis CourseCard), on l'utilise
+    let requiredAmount: number;
 
-    if (!pricing || !pricing.isActive) {
-      return {
-        canReserve: false,
-        balance: wallet.balance,
-        requiredAmount: 0,
-        error: 'Tarif non disponible'
-      };
+    if (price !== undefined) {
+      requiredAmount = price;
+    } else {
+      // Sinon, on cherche le tarif dans coursePricing (rétro-compatibilité)
+      let pricing: CoursePricing | undefined;
+
+      if (typeof coursePricingIdOrType === 'number') {
+        pricing = await db.coursePricing.get(coursePricingIdOrType);
+      } else {
+        pricing = await db.coursePricing
+          .where('courseType')
+          .equals(coursePricingIdOrType)
+          .first();
+      }
+
+      if (!pricing || !pricing.isActive) {
+        return {
+          canReserve: false,
+          balance: wallet.balance,
+          requiredAmount: 0,
+          error: 'Tarif non disponible'
+        };
+      }
+
+      requiredAmount = pricing.price;
     }
 
     // Vérifier si le solde est suffisant
-    if (wallet.balance < pricing.price) {
+    if (wallet.balance < requiredAmount) {
       return {
         canReserve: false,
         balance: wallet.balance,
-        requiredAmount: pricing.price,
-        error: `Solde insuffisant. Vous avez ${wallet.balance.toFixed(2)}€, ${pricing.price.toFixed(2)}€ requis.`
+        requiredAmount: requiredAmount,
+        error: `Solde insuffisant. Vous avez ${wallet.balance.toFixed(2)}€, ${requiredAmount.toFixed(2)}€ requis.`
       };
     }
 
     return {
       canReserve: true,
       balance: wallet.balance,
-      requiredAmount: pricing.price
+      requiredAmount: requiredAmount
     };
   } catch (error) {
     console.error('[checkBalanceForReservation] Error:', error);
@@ -93,28 +103,22 @@ export async function checkBalanceForReservation(
 
 /**
  * Crée une réservation en débitant le montant du portefeuille de l'utilisateur.
- *
- * Algorithme:
- * 1. Vérifie le solde du wallet utilisateur
- * 2. Vérifie que le tarif est actif
- * 3. Débite le montant du wallet
- * 4. Crée la réservation avec statut 'pending'
- * 5. Enregistre la transaction dans l'historique
- *
- * Transaction atomique: si une étape échoue, tout est annulé.
+ * Version simplifiée qui utilise directement le prix depuis une CourseCard.
  *
  * @param userId - ID de l'utilisateur qui réserve
  * @param courseSessionId - ID de la session de cours
- * @param coursePricingIdOrType - ID du tarif du cours OU type de cours ('collectif' | 'particulier' | 'duo')
+ * @param courseType - Type de cours ('collectif' | 'particulier' | 'duo')
+ * @param price - Prix du cours (depuis CourseCard.price)
  * @returns Promise<CreateReservationWithPaymentResult>
  */
 export async function createReservationWithPayment(
   userId: number,
   courseSessionId: number,
-  coursePricingIdOrType: number | CourseCard['courseType']
+  courseType: CourseCard['courseType'],
+  price: number
 ): Promise<CreateReservationWithPaymentResult> {
   try {
-    return await db.transaction('rw', [db.userWallets, db.reservations, db.coursePricing, db.transactions, db.courseSessions], async () => {
+    return await db.transaction('rw', [db.userWallets, db.reservations, db.transactions, db.courseSessions], async () => {
       // Étape 1: Récupérer le wallet de l'utilisateur
       const wallet = await db.userWallets.where('userId').equals(userId).first();
 
@@ -125,35 +129,15 @@ export async function createReservationWithPayment(
         };
       }
 
-      // Étape 2: Récupérer le tarif du cours
-      let pricing: CoursePricing | undefined;
-      
-      if (typeof coursePricingIdOrType === 'number') {
-        pricing = await db.coursePricing.get(coursePricingIdOrType);
-      } else {
-        // C'est un courseType, on cherche le tarif correspondant
-        pricing = await db.coursePricing
-          .where('courseType')
-          .equals(coursePricingIdOrType)
-          .first();
-      }
-
-      if (!pricing || !pricing.isActive) {
+      // Étape 2: Vérifier si le solde est suffisant
+      if (wallet.balance < price) {
         return {
           success: false,
-          error: 'Tarif non disponible'
+          error: `Solde insuffisant. Vous avez ${wallet.balance.toFixed(2)}€, ${price.toFixed(2)}€ requis.`
         };
       }
 
-      // Étape 3: Vérifier si le solde est suffisant
-      if (wallet.balance < pricing.price) {
-        return {
-          success: false,
-          error: `Solde insuffisant. Vous avez ${wallet.balance.toFixed(2)}€, ${pricing.price.toFixed(2)}€ requis.`
-        };
-      }
-
-      // Étape 4: Vérifier si l'élève n'a pas déjà réservé cette session
+      // Étape 3: Vérifier si l'élève n'a pas déjà réservé cette session
       const allReservations = await db.reservations
         .where('studentId')
         .equals(userId)
@@ -171,7 +155,7 @@ export async function createReservationWithPayment(
         };
       }
 
-      // Étape 5: Vérifier si la session n'est pas complète
+      // Étape 4: Vérifier si la session n'est pas complète
       const session = await db.courseSessions.get(courseSessionId);
       
       if (!session) {
@@ -194,32 +178,32 @@ export async function createReservationWithPayment(
         };
       }
 
-      // Étape 6: Débiter le montant du wallet
-      const newBalance = wallet.balance - pricing.price;
+      // Étape 5: Débiter le montant du wallet
+      const newBalance = wallet.balance - price;
       await db.userWallets.update(wallet.id, {
         balance: newBalance,
         updatedAt: Date.now()
       });
 
-      // Étape 5: Créer la réservation avec statut 'pending'
+      // Étape 6: Créer la réservation avec statut 'pending'
       const reservationData: Omit<Reservation, 'id'> = {
         studentId: userId,
         courseId: courseSessionId,
         sessionId: courseSessionId,
         instructorId: null,
-        courseType: typeof coursePricingIdOrType === 'string' ? coursePricingIdOrType : pricing.courseType,
+        courseType: courseType,
         status: 'pending',
-        pricePaid: pricing.price, // ← Stocker le prix payé
+        pricePaid: price, // ← Stocker le prix payé
         createdAt: Date.now(),
       };
       const reservationId = await db.reservations.add(reservationData as Reservation);
 
-      // Étape 6: Enregistrer la transaction dans l'historique
+      // Étape 7: Enregistrer la transaction dans l'historique
       const transaction: Omit<WalletTransaction, 'id'> = {
         userId,
-        amount: -pricing.price, // Négatif = débit
+        amount: -price, // Négatif = débit
         type: 'reservation',
-        description: `Réservation cours - ${pricing.courseType} (${pricing.duration})`,
+        description: `Réservation cours - ${courseType}`,
         reservationId,
         createdAt: Date.now()
       };
@@ -231,7 +215,7 @@ export async function createReservationWithPayment(
         success: true,
         reservationId,
         newBalance,
-        pricePaid: pricing.price
+        pricePaid: price
       };
     });
   } catch (error) {

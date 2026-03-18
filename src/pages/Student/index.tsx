@@ -78,9 +78,8 @@ export function StudentPage() {
       price: selectedCourseCard.price,
     });
 
-    // Note: createReservationWithPayment needs to be adapted for courseType instead of pricingId
-    // For now, we'll need to find the pricingId based on courseType
-    const result = await createReservationWithPayment(user.id, session.id, selectedCourseCard.courseType);
+    // Passer le prix directement depuis la CourseCard
+    const result = await createReservationWithPayment(user.id, session.id, selectedCourseCard.courseType, selectedCourseCard.price);
 
     console.log('[StudentPage] Résultat:', result);
 

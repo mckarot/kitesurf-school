@@ -477,7 +477,9 @@ export function AdminReservationsValidationPage() {
                       </div>
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-orange-600">{reservation.course?.price || 0}€</div>
+                          <div className="text-2xl font-bold text-orange-600">
+                            {reservation.pricePaid !== undefined ? reservation.pricePaid : (reservation.course?.price || 0)}€
+                          </div>
                           <div className="text-gray-600 text-sm">1 séance</div>
                         </div>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${
