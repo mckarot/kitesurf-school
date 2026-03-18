@@ -18,7 +18,7 @@ import { BookCourseModal } from './BookCourseModal';
 import { StudentErrorBoundary } from './StudentErrorBoundary';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import type { CourseSession, CourseCard, PackCard } from '../../types';
-import { Calendar, Users, DollarSign, CheckCircle, XCircle, AlertCircle, Wallet, Star, Zap, UsersRound } from 'lucide-react';
+import { Calendar, Users, DollarSign, CheckCircle, XCircle, AlertCircle, Wallet, Star, Zap, UsersRound, Award, Check } from 'lucide-react';
 
 // Map icon names to actual components
 const ICON_MAP: Record<string, any> = {
@@ -241,7 +241,7 @@ export function StudentPage() {
                 </Button>
               </motion.div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {activeCourseCards.map((card, index) => {
                   const IconComponent = ICON_MAP[card.icon] || Users;
                   const hasSufficientBalance = canAffordCourse(card.price);
@@ -253,111 +253,105 @@ export function StudentPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1, duration: 0.5 }}
-                      whileHover={{ y: -8, scale: 1.02 }}
+                      whileHover={{ y: -12, scale: 1.02 }}
+                      className={`relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 ${
+                        card.isHighlighted === 1 ? 'ring-2 ring-purple-500 ring-offset-4' : ''
+                      }`}
                     >
-                      <Card variant="elevated" className="h-full flex flex-col overflow-hidden rounded-3xl">
-                        {/* Card Header */}
-                        <div className={`h-3 bg-gradient-to-r ${card.color}`} />
-
-                        <CardBody className="flex-1 p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <Badge
-                              variant={
-                                card.courseType === 'collectif'
-                                  ? 'success'
-                                  : card.courseType === 'particulier'
-                                  ? 'warning'
-                                  : 'danger'
-                              }
-                              className="text-sm"
-                            >
-                              {card.courseType === 'collectif'
-                                ? '👥 Collectif'
-                                : card.courseType === 'particulier'
-                                ? '🎯 Particulier'
-                                : '👥 Duo'}
-                            </Badge>
-                            {isCardReserved && (
-                              <Badge variant="info" className="flex items-center space-x-1">
-                                <CheckCircle className="w-3 h-3" />
-                                <span>Réservé</span>
-                              </Badge>
-                            )}
+                      {/* Badge */}
+                      {card.badge && (
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                            {card.badge}
                           </div>
-
-                          <div className="flex items-center space-x-3 mb-4">
-                            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${card.color}`}>
-                              <IconComponent className="w-6 h-6 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900">
-                              {card.title}
-                            </h3>
-                          </div>
-
-                          <p className="text-gray-600 mb-6 line-clamp-2">
-                            {card.description}
-                          </p>
-
-                          <div className="space-y-3">
-                            <div className="flex items-center space-x-3 text-gray-600">
-                              <Users className="w-5 h-5 text-blue-500" />
-                              <span className="text-sm">Max {card.maxStudents} {card.maxStudents === 1 ? 'élève' : 'élèves'}</span>
-                            </div>
-                            <div className="flex items-center space-x-3 text-gray-600">
-                              <DollarSign className="w-5 h-5 text-cyan-500" />
-                              <span className="font-semibold text-gray-900">{card.price}€ / séance</span>
-                            </div>
-                          </div>
-
-                          <ul className="space-y-2 mt-4">
-                            {card.features.slice(0, 3).map((feature) => (
-                              <li key={feature} className="flex items-start space-x-2 text-sm text-gray-600">
-                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardBody>
-
-                        {/* Card Footer */}
-                        <div className="border-t border-gray-100 p-6 bg-gray-50">
-                          {isCardReserved ? (
-                            <Button
-                              variant="secondary"
-                              className="w-full"
-                              disabled
-                            >
-                              <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
-                              Déjà réservé
-                            </Button>
-                          ) : (
-                            <Button
-                              variant={hasSufficientBalance ? 'primary' : 'secondary'}
-                              className="w-full"
-                              onClick={() => handleReserveClick({
-                                id: card.id,
-                                title: card.title,
-                                price: card.price,
-                                courseType: card.courseType
-                              })}
-                              disabled={!hasSufficientBalance}
-                              isLoading={reservationLoading}
-                            >
-                              {hasSufficientBalance ? (
-                                <>
-                                  <Calendar className="w-5 h-5 mr-2" />
-                                  Réserver
-                                </>
-                              ) : (
-                                <>
-                                  <XCircle className="w-5 h-5 mr-2 text-red-500" />
-                                  Solde insuffisant
-                                </>
-                              )}
-                            </Button>
-                          )}
                         </div>
-                      </Card>
+                      )}
+
+                      {/* Icon */}
+                      <div
+                        className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${card.color} mb-6`}
+                      >
+                        <IconComponent className="w-8 h-8 text-white" />
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                        {card.title}
+                      </h3>
+
+                      {/* Description */}
+                      <p className="text-gray-600 mb-6">
+                        {card.description}
+                      </p>
+
+                      {/* Price */}
+                      <div className="flex items-baseline mb-6">
+                        <span className="text-5xl font-bold text-gray-900">{card.price}€</span>
+                        <span className="text-gray-600 ml-2">/séance</span>
+                      </div>
+
+                      {/* Details */}
+                      <div className="space-y-3 mb-8">
+                        <div className="flex items-center space-x-2 text-gray-700">
+                          <Users className="w-5 h-5 text-blue-500" />
+                          <span>Max {card.maxStudents} {card.maxStudents === 1 ? 'élève' : 'élèves'}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-700">
+                          <Award className="w-5 h-5 text-blue-500" />
+                          <span>{card.level}</span>
+                        </div>
+                      </div>
+
+                      {/* Features */}
+                      <ul className="space-y-3 mb-8">
+                        {card.features.map((feature) => (
+                          <li key={feature} className="flex items-start space-x-2">
+                            <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                            <span className="text-gray-700">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Button */}
+                      {isCardReserved ? (
+                        <Button
+                          variant="secondary"
+                          className="w-full py-4 text-lg"
+                          disabled
+                        >
+                          <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
+                          Déjà réservé
+                        </Button>
+                      ) : (
+                        <Button
+                          variant={hasSufficientBalance ? 'primary' : 'secondary'}
+                          className={`w-full py-4 text-lg transition-all ${
+                            hasSufficientBalance && card.badge
+                              ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-lg'
+                              : ''
+                          }`}
+                          onClick={() => handleReserveClick({
+                            id: card.id,
+                            title: card.title,
+                            price: card.price,
+                            courseType: card.courseType
+                          })}
+                          disabled={!hasSufficientBalance}
+                          isLoading={reservationLoading}
+                        >
+                          {hasSufficientBalance ? (
+                            <>
+                              <Calendar className="w-5 h-5 mr-2" />
+                              Réserver
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-5 h-5 mr-2 text-red-500" />
+                              Solde insuffisant
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -390,7 +384,7 @@ export function StudentPage() {
                 <p className="text-gray-600 mb-6">Revenez plus tard pour de nouveaux packs</p>
               </motion.div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {activePackCards.map((pack, index) => {
                   const IconComponent = ICON_MAP[pack.icon] || Star;
                   const hasSufficientBalance = canAffordCourse(pack.price);
@@ -401,81 +395,75 @@ export function StudentPage() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1, duration: 0.5 }}
-                      whileHover={{ y: -8, scale: 1.02 }}
+                      whileHover={{ y: -12, scale: 1.02 }}
+                      className={`relative bg-gradient-to-br from-gray-50 to-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 ${
+                        pack.isHighlighted === 1 ? 'border-purple-500' : 'border-transparent'
+                      }`}
                     >
-                      <Card variant="elevated" className="h-full flex flex-col overflow-hidden rounded-3xl">
-                        {/* Card Header */}
-                        {pack.badge && (
-                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                              {pack.badge}
-                            </div>
+                      {/* Badge */}
+                      {pack.badge && (
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+                          <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                            {pack.badge}
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        <div className={`h-3 bg-gradient-to-r ${pack.color}`} />
+                      {/* Title & Description */}
+                      <div className="text-center mb-6">
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{pack.title}</h3>
+                        <p className="text-gray-600">{pack.description}</p>
+                      </div>
 
-                        <CardBody className="flex-1 p-6">
-                          <div className="flex items-center space-x-3 mb-4">
-                            <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${pack.color}`}>
-                              <IconComponent className="w-6 h-6 text-white" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900">
-                              {pack.title}
-                            </h3>
-                          </div>
-
-                          <p className="text-gray-600 mb-6 line-clamp-2">
-                            {pack.description}
-                          </p>
-
-                          <div className="text-center mb-6">
-                            <div className="flex items-center justify-center space-x-3">
-                              <span className="text-4xl font-bold text-gray-900">{pack.price}€</span>
-                              {pack.originalPrice && (
-                                <div className="text-left">
-                                  <div className="text-sm text-gray-500 line-through">{pack.originalPrice}€</div>
-                                  {pack.discount !== undefined && pack.discount > 0 && (
-                                    <div className="text-sm text-green-600 font-semibold">-{pack.discount}€</div>
-                                  )}
-                                </div>
+                      {/* Price */}
+                      <div className="text-center mb-6">
+                        <div className="flex items-center justify-center space-x-3">
+                          <span className="text-5xl font-bold text-gray-900">{pack.price}€</span>
+                          {pack.originalPrice && (
+                            <div className="text-left">
+                              <div className="text-sm text-gray-500 line-through">{pack.originalPrice}€</div>
+                              {pack.discount !== undefined && pack.discount > 0 && (
+                                <div className="text-sm text-green-600 font-semibold">-{pack.discount}€</div>
                               )}
                             </div>
-                            <div className="text-gray-600 mt-2">{pack.sessions} séances</div>
-                          </div>
-
-                          <ul className="space-y-2">
-                            {pack.features.slice(0, 4).map((feature) => (
-                              <li key={feature} className="flex items-start space-x-2 text-sm text-gray-600">
-                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardBody>
-
-                        {/* Card Footer */}
-                        <div className="border-t border-gray-100 p-6 bg-gray-50">
-                          <Button
-                            variant={hasSufficientBalance ? 'primary' : 'secondary'}
-                            className="w-full"
-                            disabled={!hasSufficientBalance}
-                            isLoading={reservationLoading}
-                          >
-                            {hasSufficientBalance ? (
-                              <>
-                                <Calendar className="w-5 h-5 mr-2" />
-                                Choisir ce pack
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="w-5 h-5 mr-2 text-red-500" />
-                                Solde insuffisant
-                              </>
-                            )}
-                          </Button>
+                          )}
                         </div>
-                      </Card>
+                        <div className="text-gray-600 mt-2">{pack.sessions} séances</div>
+                      </div>
+
+                      {/* Features */}
+                      <ul className="space-y-3 mb-8">
+                        {pack.features.map((feature) => (
+                          <li key={feature} className="flex items-start space-x-2">
+                            <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                            <span className="text-gray-700">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Button */}
+                      <Button
+                        variant={hasSufficientBalance ? 'primary' : 'secondary'}
+                        className={`w-full py-4 text-lg transition-all ${
+                          hasSufficientBalance && pack.badge
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-lg'
+                            : ''
+                        }`}
+                        disabled={!hasSufficientBalance}
+                        isLoading={reservationLoading}
+                      >
+                        {hasSufficientBalance ? (
+                          <>
+                            <Calendar className="w-5 h-5 mr-2" />
+                            Choisir ce pack
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-5 h-5 mr-2 text-red-500" />
+                            Solde insuffisant
+                          </>
+                        )}
+                      </Button>
                     </motion.div>
                   );
                 })}
