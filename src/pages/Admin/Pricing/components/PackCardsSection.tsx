@@ -125,7 +125,7 @@ export function PackCardsSection({
             >
               {/* Badge */}
               {card.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                   <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                     {card.badge}
                   </div>

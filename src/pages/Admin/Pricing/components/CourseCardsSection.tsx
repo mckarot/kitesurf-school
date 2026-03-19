@@ -140,7 +140,7 @@ export function CourseCardsSection({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1, duration: 0.4 }}
                 whileHover={{ y: -4, scale: 1.02 }}
-                className={`rounded-3xl p-6 shadow-xl border-2 transition-all ${
+                className={`relative rounded-3xl p-6 shadow-xl border-2 transition-all ${
                   card.isActive === 1
                     ? card.isHighlighted === 1
                       ? 'bg-white border-purple-500 shadow-2xl ring-4 ring-purple-200'
@@ -150,7 +150,7 @@ export function CourseCardsSection({
               >
                 {/* Badge */}
                 {card.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                       {card.badge}
                     </div>
