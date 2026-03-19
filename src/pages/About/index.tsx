@@ -1,5 +1,5 @@
 // src/pages/About/index.tsx
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, useReducedMotion } from 'framer-motion';
 import { useRef } from 'react';
 import {
   Award,
@@ -15,6 +15,127 @@ import {
   Waves,
 } from 'lucide-react';
 
+interface TeamMember {
+  name: string;
+  role: string;
+  bio: string;
+  level: string;
+  experience: string;
+  quote: string;
+  image: string;
+  certs: string[];
+}
+
+interface TeamGridProps {
+  team: TeamMember[];
+}
+
+function TeamGrid({ team }: TeamGridProps) {
+  const shouldReduceMotion = useReducedMotion();
+
+  const containerVariants = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.15,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { 
+        duration: shouldReduceMotion ? 0 : 0.6,
+        ease: [0.25, 0.46, 0.45, 0.94] as const, // easeOutCubic
+      },
+    },
+  };
+
+  // Effet escalier : 1ère carte en haut, 2ème au milieu, 3ème en bas
+  // Puis on recommence le pattern pour la 4ème carte
+  const baseHeights = [0, 32, 64]; // pixels de décalage vers le bas
+
+  return (
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+    >
+      {team.map((member, index) => (
+        <motion.div
+          key={member.name}
+          variants={itemVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          style={{ 
+            marginTop: baseHeights[index % baseHeights.length],
+          }}
+          whileHover={{ 
+            y: shouldReduceMotion ? 0 : -12,
+            scale: shouldReduceMotion ? 1 : 1.02,
+            transition: {
+              duration: 0.3,
+              ease: [0.34, 1.56, 0.64, 1] as const, // spring-like easing
+            }
+          }}
+          className="group bg-white rounded-3xl p-6 shadow-lg hover:shadow-2xl transition-shadow duration-300"
+        >
+          {/* Image with badges */}
+          <div className="relative h-72 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl mb-6 overflow-hidden">
+            {/* Instructor image - free stock photos */}
+            <img
+              src={member.image}
+              alt={member.name}
+              className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 ease-out"
+              loading="lazy"
+            />
+
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+
+            {/* Badge INSTRUCTOR */}
+            <div className="absolute bottom-20 left-0 right-0 text-center">
+              <span className="text-white text-lg font-bold tracking-wider drop-shadow-lg">
+                INSTRUCTOR
+              </span>
+            </div>
+
+            {/* Badges certification */}
+            <div className="absolute bottom-4 left-4 flex gap-2">
+              <span className="bg-white/90 text-gray-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                {member.level}
+              </span>
+              <span className="bg-cyan-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+                {member.experience}
+              </span>
+            </div>
+          </div>
+
+          {/* Name */}
+          <h3 className="text-2xl font-bold text-gray-900 mb-1">{member.name}</h3>
+
+          {/* Role */}
+          <p className="text-blue-600 font-medium text-sm mb-4">{member.role}</p>
+
+          {/* Bio */}
+          <p className="text-gray-600 text-sm mb-6">{member.bio}</p>
+
+          {/* Quote */}
+          <p className="text-cyan-600 italic text-sm border-t border-gray-100 pt-4">
+            {member.quote}
+          </p>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
+}
+
 export function AboutPage() {
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef });
@@ -25,28 +146,40 @@ export function AboutPage() {
       name: 'Alexandre Martin',
       role: 'Fondateur & Moniteur Chef',
       bio: '15 ans d\'expérience, diplômé d\'État, champion de France de kite race',
-      image: '👨‍🏫',
+      level: 'IKO NIVEAU 3',
+      experience: '15 ANS D\'EXP.',
+      quote: '"Le vent ne juge pas, il soulève."',
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=500&fit=crop&crop=face',
       certs: ['BEESAN', 'Moniteur FFK', 'Sauveteur en Mer'],
     },
     {
       name: 'Sophie Dubois',
       role: 'Monitrice Senior',
       bio: 'Passionnée depuis 10 ans, spécialisée dans l\'apprentissage féminin',
-      image: '👩‍🏫',
+      level: 'IKO NIVEAU 2',
+      experience: '10 ANS D\'EXP.',
+      quote: '"Chaque vague est une nouvelle chance."',
+      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=500&fit=crop&crop=face',
       certs: ['Monitrice FFK', 'Premiers Secours'],
     },
     {
       name: 'Lucas Bernard',
       role: 'Moniteur',
       bio: 'Ancien compétiteur, expert en freestyle et gestion de groupe',
-      image: '🏄‍♂️',
+      level: 'IKO NIVEAU 3',
+      experience: '8 ANS D\'EXP.',
+      quote: '"La liberté commence où le sable s\'arrête."',
+      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=500&fit=crop&crop=face',
       certs: ['Moniteur FFK', 'BPJEPS'],
     },
     {
       name: 'Emma Petit',
       role: 'Monitrice',
       bio: 'Pédagogue et patiente, parfaite pour les débutants et enfants',
-      image: '👩‍🎓',
+      level: 'IKO NIVEAU 2',
+      experience: '6 ANS D\'EXP.',
+      quote: '"Apprendre, c\'est voler plus haut."',
+      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=500&fit=crop&crop=face',
       certs: ['Monitrice FFK', 'BAFD'],
     },
   ];
@@ -326,35 +459,7 @@ export function AboutPage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {team.map((member, index) => (
-              <motion.div
-                key={member.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1, duration: 0.5 }}
-                whileHover={{ y: -8 }}
-                className="bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 text-center"
-              >
-                <div className="text-7xl mb-6">{member.image}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{member.name}</h3>
-                <div className="text-blue-600 font-medium mb-4">{member.role}</div>
-                <p className="text-gray-600 text-sm mb-6">{member.bio}</p>
-                <div className="space-y-2">
-                  {member.certs.map((cert) => (
-                    <div
-                      key={cert}
-                      className="inline-flex items-center space-x-2 bg-gray-100 px-3 py-1 rounded-full text-xs text-gray-700"
-                    >
-                      <CheckCircle className="w-3 h-3 text-green-500" />
-                      <span>{cert}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
+          <TeamGrid team={team} />
         </div>
       </section>
 
